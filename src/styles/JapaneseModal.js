@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-/* ===== 오버레이 (배경 어두움) ===== */
+
 export const Overlay = styled.div`
   position: fixed;
   inset: 0;
@@ -18,7 +18,7 @@ export const Overlay = styled.div`
   }
 `;
 
-/* ===== 모달 카드 ===== */
+
 export const ModalCard = styled.div`
   width: 100%;
   max-width: 360px;
@@ -50,7 +50,6 @@ export const ModalTitle = styled.h2`
   color: #454545;
 `;
 
-/* ===== Pill (카테고리 태그) ===== */
 export const PillRow = styled.div`
   display: flex;
   justify-content: center;
@@ -68,7 +67,7 @@ export const Pill = styled.span`
   color: #19cb40;
 `;
 
-/* ===== 발음 버튼 (가운데) ===== */
+
 export const SoundButton = styled.button`
   border: none;
   background: transparent;
@@ -85,7 +84,7 @@ export const SoundButton = styled.button`
   }
 `;
 
-/* ===== 일본어 본문 ===== */
+
 export const JpText = styled.div`
   font-size: 22px;
   font-weight: 600;
@@ -102,7 +101,7 @@ export const JpSub = styled.div`
   text-align: center;
 `;
 
-/* ===== 구분선 ===== */
+
 export const Divider = styled.hr`
   width: 100%;
   border: 0;
@@ -110,7 +109,6 @@ export const Divider = styled.hr`
   margin: 16px 0;
 `;
 
-/* ===== 한국어 뜻 ===== */
 export const JpMeaning = styled.div`
   font-size: 16px;
   font-weight: 600;
@@ -119,7 +117,7 @@ export const JpMeaning = styled.div`
   margin-bottom: 32px;
 `;
 
-/* ===== 확인 버튼 ===== */
+
 export const ConfirmButton = styled.button`
   width: 100%;
   height: 52px;
