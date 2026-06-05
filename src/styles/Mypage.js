@@ -29,7 +29,7 @@ export const Avatar = styled.img`
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.5);
   object-fit: cover;
 `;
 
@@ -38,13 +38,9 @@ export const ProfileInfo = styled.div`
 `;
 
 export const UserName = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 24px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 4px;
 `;
 
 export const SettingsIcon = styled.span`
@@ -174,16 +170,13 @@ export const NavItem = styled.button`
 export const NavIcon = styled.div`
   width: 24px;
   height: 24px;
-  
+
   img {
     width: 100%;
     height: 100%;
-    filter: ${props => props.$active ? 'none' : 'grayscale(100%) opacity(0.4)'};
+    filter: ${props => props.$active
+      ? 'brightness(0) saturate(100%) invert(57%) sepia(75%) saturate(700%) hue-rotate(346deg) brightness(103%) contrast(95%)'
+      : 'grayscale(100%) opacity(0.4)'};
     transition: all 0.2s ease;
-  }
-  
-  &:hover img {
-    filter: none;
-    opacity: 1;
   }
 `;
