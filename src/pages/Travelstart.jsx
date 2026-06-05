@@ -135,7 +135,7 @@ export default function TravelStart() {
         travel_region: region,
         travel_start_date: new Date(startDate).toISOString(),
         travel_end_date: new Date(endDate).toISOString(),
-        travel_budget: 1000000,
+        travel_budget: Number(budget) || 1000000,
         transportation: transports,
         walk_distance: walkDistances,
         lodging_info: `${region}역 근처 호텔`,
@@ -145,6 +145,7 @@ export default function TravelStart() {
       navigate("/home");
     } catch (err) {
       console.warn("travel.create failed", err);
+      alert("여행 생성 중 오류가 발생했습니다. 입력 정보를 확인해주세요.");
     }
   };
 

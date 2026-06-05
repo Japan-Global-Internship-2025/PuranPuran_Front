@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 const headers = () => ({
   "Content-Type": "application/json",
@@ -15,9 +15,9 @@ async function request(method, path, body) {
     throw new Error(`${method} ${path} → ${res.status}`);
   }
   console.log(`${method} ${path} → ${res.status}`);
-  const data = await res.json();
-  console.log("response data:", data);
-  return data;
+  const result = await res.json();
+  console.log("response data:", result);
+  return result && result.success ? result.data : result;
 }
 
 // ── Auth ──────────────────────────────────────────────
@@ -70,7 +70,10 @@ export const api = {
         method: "POST",
         credentials: "include",
         body: formData,
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) throw new Error(`POST /api/spending/receipt/upload → ${r.status}`);
+        return r.json();
+      }).then(res => res && res.success ? res.data : res),
   },
 
   // ── Exchange Rate ─────────────────────────────────────

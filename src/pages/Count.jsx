@@ -66,31 +66,20 @@ import shopping from "../assets/shopping.svg";
 import other from "../assets/gg.svg";
 import LogoSvg from "../assets/logo1.svg";
 
-const TRAVEL_ID = 1;
-
 const DUMMY_DATA = {
-  budget: { total: 10000000, used: 720000, percent: 7, remaining: 9280000 },
-  dailyAvg: { amount: 180000, changeText: "어제 대비 -5% 절약중" },
-  recentExpenses: [
-    { id: 1, title: "Family Mart", location: "편의점", total_amount: 1020, total_krw: 9551, currency: "JPY", category: "기타" },
-    { id: 2, title: "スシロー", location: "맛집", total_amount: 2200, total_krw: 20592, currency: "JPY", category: "식비" },
-    { id: 3, title: "ドン·キホーテ", location: "쇼핑", total_amount: 3800, total_krw: 35576, currency: "JPY", category: "쇼핑" },
-  ],
-  categories: [
-    { id: 1, name: "식비", icon: rice, amount: 66800, percent: 45, color: "#ff871e" },
-    { id: 2, name: "여가", icon: drink, amount: 36600, percent: 25, color: "#5F27CD" },
-    { id: 3, name: "쇼핑", icon: shopping, amount: 45600, percent: 31, color: "#10AC84" },
-    { id: 4, name: "기타", icon: other, amount: 18000, percent: 12, color: "#576574" },
-  ],
+  budget: { total: 0, used: 0, percent: 0, remaining: 0 },
+  dailyAvg: { amount: 0, changeText: "불러오는 중..." },
+  recentExpenses: [],
+  categories: [],
 };
 
 // 지출 직접 입력 모달
-function AddExpenseModal({ onClose, onSave }) {
+function AddExpenseModal({ travelId, onClose, onSave }) {
   const [form, setForm] = useState({
     title: "", location: "", total_amount: "",
     date: new Date().toISOString().split("T")[0],
     time: "00:00",
-    currency: "JPY", payment_method: "현금", category: "기타",
+    currency: "JPY", payment_method: "CASH", category: "기타",
   });
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -98,8 +87,19 @@ function AddExpenseModal({ onClose, onSave }) {
   const handleSubmit = async () => {
     if (!form.title || !form.total_amount) return;
     try {
-      await api.spending.createReceipt(TRAVEL_ID, { ...form, total_amount: Number(form.total_amount) });
-    } catch { /* API 미연결 시 로컬 처리 */ }
+      const body = {
+        title: form.title,
+        location: form.location || form.category,
+        total_amount: Number(form.total_amount),
+        date: new Date(`${form.date}T${form.time}`).toISOString(),
+        currency: form.currency,
+        payment_method: form.payment_method,
+        category: form.category,
+      };
+      await api.spending.createReceipt(travelId, body);
+    } catch (err) {
+      console.error("createReceipt failed", err);
+    }
     onSave(form);
     onClose();
   };
@@ -189,52 +189,164 @@ function AddExpenseModal({ onClose, onSave }) {
 
 export default function Count() {
   const navigate = useNavigate();
+  const [travelId, setTravelId] = useState(null);
+  const [travel, setTravel] = useState(null);
   const [data, setData] = useState(DUMMY_DATA);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     const loadData = async () => {
       setLoading(true);
       try {
-        const [recent, category, total] = await Promise.all([
-          api.spending.getRecent(TRAVEL_ID),
-          api.spending.getCategory(TRAVEL_ID),
-          api.spending.getTotal(TRAVEL_ID),
+        const u = await api.auth.getUser();
+        if (!mounted) return;
+        const fetchedUser = u ?? null;
+        const tId = fetchedUser?.lastest_travel_id;
+
+        if (!tId) {
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+        setTravelId(tId);
+
+        const travelData = await api.travel.getOne(tId);
+        if (!mounted) return;
+        setTravel(travelData);
+
+        const [recent, categoryTotals, totalKrw] = await Promise.all([
+          api.spending.getRecent(tId),
+          api.spending.getCategory(tId),
+          api.spending.getTotal(tId),
         ]);
-        setData(prev => ({
-          ...prev,
-          recentExpenses: recent || prev.recentExpenses,
-          categories: category || prev.categories,
-          budget: total || prev.budget,
-        }));
-      } catch {
-        // API 미연결 시 더미 데이터 유지
+
+        if (!mounted) return;
+
+        // 안전한 숫자 변환 헬퍼
+        const toSafeNum = (v) => {
+          const n = Number(v);
+          return isNaN(n) ? 0 : n;
+        };
+
+        const budgetTotal = toSafeNum(travelData?.travel_budget) || 0;
+        const used = toSafeNum(totalKrw);
+        const remaining = budgetTotal - used;
+        const percent = budgetTotal > 0 ? Math.min(100, Math.round((used / budgetTotal) * 100)) : 0;
+
+        const mappedCategories = [
+          { id: 1, name: "식비", icon: rice, amount: toSafeNum(categoryTotals?.["식비"]), color: "#ff871e" },
+          { id: 2, name: "여가", icon: drink, amount: toSafeNum(categoryTotals?.["여가"]), color: "#5F27CD" },
+          { id: 3, name: "쇼핑", icon: shopping, amount: toSafeNum(categoryTotals?.["쇼핑"]), color: "#10AC84" },
+          { id: 4, name: "기타", icon: other, amount: toSafeNum(categoryTotals?.["기타"]), color: "#576574" },
+        ];
+        const totalCatAmount = mappedCategories.reduce((sum, cat) => sum + cat.amount, 0);
+        mappedCategories.forEach(cat => {
+          cat.percent = totalCatAmount > 0 ? Math.round((cat.amount / totalCatAmount) * 100) : 0;
+        });
+
+        // 날짜 유효성 검사로 NaN 방지
+        const startDate = travelData?.travel_start_date ? new Date(travelData.travel_start_date) : null;
+        const endDate = travelData?.travel_end_date ? new Date(travelData.travel_end_date) : null;
+        const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+        const dayDiff = (isValidDate(startDate) && isValidDate(endDate))
+          ? Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1)
+          : 1;
+        const dailyAvgAmount = Math.round(used / dayDiff);
+
+        // recentExpenses 정규화 (필드명 통일)
+        const normalizedRecent = Array.isArray(recent)
+          ? recent.map(r => ({
+              id: r.id,
+              title: r.title || "알 수 없음",
+              location: r.location || r.category || "",
+              category: r.category || "기타",
+              total_amount: toSafeNum(r.total_amount),
+              total_krw: toSafeNum(r.total_krw),
+              date: r.date,
+            }))
+          : [];
+
+        setData({
+          budget: { total: budgetTotal, used, percent, remaining },
+          dailyAvg: { amount: dailyAvgAmount, changeText: "계획대로 소비 중" },
+          recentExpenses: normalizedRecent,
+          categories: mappedCategories,
+        });
+
+      } catch (err) {
+        console.warn("load spending data failed", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     loadData();
-  }, []);
+    return () => { mounted = false; };
+  }, [navigate]);
 
-  const formatKrw = (amount) => "₩" + Math.abs(amount).toLocaleString("ko-KR");
-  const formatYen = (amount) => `¥${Math.abs(amount).toLocaleString()}`;
+  // 안전한 숫자 포맷 (NaN/undefined/null → 0으로 대체)
+  const toSafeNum = (v) => { const n = Number(v); return isNaN(n) ? 0 : n; };
+  const formatKrw = (amount) => "₩" + toSafeNum(amount).toLocaleString("ko-KR");
+  const formatYen = (amount) => `¥${toSafeNum(amount).toLocaleString()}`;
 
-  const handleSaveExpense = (form) => {
-    const newItem = {
-      id: Date.now(),
-      title: form.title,
-      location: form.category,
-      total_amount: Number(form.total_amount),
-      total_krw: Math.round(Number(form.total_amount) * 9.36),
-      currency: form.currency,
-      category: form.category,
-    };
-    setData(prev => ({
-      ...prev,
-      recentExpenses: [newItem, ...prev.recentExpenses].slice(0, 3),
-    }));
+  const handleSaveExpense = async (form) => {
+    try {
+      if (travelId) {
+        const [recent, categoryTotals, totalKrw] = await Promise.all([
+          api.spending.getRecent(travelId),
+          api.spending.getCategory(travelId),
+          api.spending.getTotal(travelId),
+        ]);
+
+        const budgetTotal = toSafeNum(travel?.travel_budget) || 0;
+        const used = toSafeNum(totalKrw);
+        const remaining = budgetTotal - used;
+        const percent = budgetTotal > 0 ? Math.min(100, Math.round((used / budgetTotal) * 100)) : 0;
+
+        const mappedCategories = [
+          { id: 1, name: "식비", icon: rice, amount: toSafeNum(categoryTotals?.["식비"]), color: "#ff871e" },
+          { id: 2, name: "여가", icon: drink, amount: toSafeNum(categoryTotals?.["여가"]), color: "#5F27CD" },
+          { id: 3, name: "쇼핑", icon: shopping, amount: toSafeNum(categoryTotals?.["쇼핑"]), color: "#10AC84" },
+          { id: 4, name: "기타", icon: other, amount: toSafeNum(categoryTotals?.["기타"]), color: "#576574" },
+        ];
+        const totalCatAmount = mappedCategories.reduce((sum, cat) => sum + cat.amount, 0);
+        mappedCategories.forEach(cat => {
+          cat.percent = totalCatAmount > 0 ? Math.round((cat.amount / totalCatAmount) * 100) : 0;
+        });
+
+        const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+        const startDate = travel?.travel_start_date ? new Date(travel.travel_start_date) : null;
+        const endDate = travel?.travel_end_date ? new Date(travel.travel_end_date) : null;
+        const dayDiff = (isValidDate(startDate) && isValidDate(endDate))
+          ? Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1)
+          : 1;
+        const dailyAvgAmount = Math.round(used / dayDiff);
+
+        const normalizedRecent = Array.isArray(recent)
+          ? recent.map(r => ({
+              id: r.id,
+              title: r.title || "알 수 없음",
+              location: r.location || r.category || "",
+              category: r.category || "기타",
+              total_amount: toSafeNum(r.total_amount),
+              total_krw: toSafeNum(r.total_krw),
+              date: r.date,
+            }))
+          : [];
+
+        setData({
+          budget: { total: budgetTotal, used, percent, remaining },
+          dailyAvg: { amount: dailyAvgAmount, changeText: "계획대로 소비 중" },
+          recentExpenses: normalizedRecent,
+          categories: mappedCategories,
+        });
+      }
+    } catch (e) {
+      console.warn("refresh after save failed", e);
+    }
   };
+
 
   return (
     <Screen>
@@ -294,7 +406,7 @@ export default function Count() {
         <StatsCard>
           <StatsLabel>하루 평균 지출액</StatsLabel>
           <StatsAmount>
-            {data.dailyAvg.amount.toLocaleString("ko-KR")}
+            {toSafeNum(data.dailyAvg.amount).toLocaleString("ko-KR")}
             <span>원</span>
           </StatsAmount>
           <StatsChange>{data.dailyAvg.changeText}</StatsChange>
@@ -315,8 +427,8 @@ export default function Count() {
                 <ExpenseLocation>{expense.location || expense.category}</ExpenseLocation>
               </ExpenseInfo>
               <ExpenseAmount>
-                -{formatKrw(expense.total_krw || expense.amountKrw)}
-                <ExpenseYen>-{formatYen(expense.total_amount || expense.amountYen)}</ExpenseYen>
+                -{formatKrw(expense.total_krw)}
+                <ExpenseYen>-{formatYen(expense.total_amount)}</ExpenseYen>
               </ExpenseAmount>
             </ExpenseItem>
           ))}
@@ -342,8 +454,8 @@ export default function Count() {
                 </CategoryBar>
               </CategoryInfo>
               <div style={{ textAlign: "right" }}>
-                <CategoryAmount>{category.amount.toLocaleString("ko-KR")}원</CategoryAmount>
-                <CategoryPercent>{category.percent}%</CategoryPercent>
+                <CategoryAmount>{toSafeNum(category.amount).toLocaleString("ko-KR")}원</CategoryAmount>
+                <CategoryPercent>{toSafeNum(category.percent)}%</CategoryPercent>
               </div>
             </CategoryItem>
           ))}
@@ -367,7 +479,7 @@ export default function Count() {
       </BottomNav>
 
       {showModal && (
-        <AddExpenseModal onClose={() => setShowModal(false)} onSave={handleSaveExpense} />
+        <AddExpenseModal travelId={travelId} onClose={() => setShowModal(false)} onSave={handleSaveExpense} />
       )}
     </Screen>
   );

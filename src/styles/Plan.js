@@ -641,3 +641,262 @@ export const ActionBtn = styled.button`
 
   &:active { color: #ff871e; }
 `;
+
+/* ===== RecommendBox / PlannerBox ===== */
+export const RecommendBox = styled.div`
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  flex: 1;
+`;
+
+export const PlannerBox = styled.div`
+  background: #f8f8f8;
+  border-radius: 24px 24px 0 0;
+  margin-top: 12px;
+  min-height: 400px;
+`;
+
+/* ===== Pin Modal ===== */
+export const PinModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.52);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+`;
+
+export const PinModal = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 335px;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.22);
+`;
+
+export const PinModalHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 28px 28px 20px;
+  gap: 8px;
+`;
+
+export const PinModalTitleArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+`;
+
+export const PinModalName = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: #2a2a2a;
+`;
+
+export const PinModalSubName = styled.div`
+  font-size: 12px;
+  color: #949494;
+  margin-top: -4px;
+`;
+
+export const PinModalAddress = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 11px;
+  color: #bfbcbc;
+  margin-top: 8px;
+  line-height: 1.4;
+`;
+
+export const PinModalClose = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+`;
+
+export const PinModalImage = styled.img`
+  width: calc(100% - 56px);
+  height: 120px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 10px;
+  margin: 0 28px;
+`;
+
+export const PinModalBody = styled.div`
+  padding: 20px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+`;
+
+export const PinModalSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+export const PinModalSectionTitle = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #f27100;
+`;
+
+export const PinModalDesc = styled.div`
+  font-size: 12px;
+  color: #616161;
+  line-height: 1.65;
+`;
+
+/* ===== Add Modal ===== */
+export const AddModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.52);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+`;
+
+export const AddModal = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 355px;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.22);
+`;
+
+export const AddModalHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 28px 24px 20px;
+  gap: 8px;
+`;
+
+export const AddModalTitleArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+export const AddModalSub = styled.div`
+  font-size: 12px;
+  color: #aaa;
+`;
+
+export const AddModalTitle = styled.div`
+  font-size: 22px;
+  font-weight: 700;
+  color: #111;
+`;
+
+export const AddModalClose = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+`;
+
+export const AddModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 24px 24px;
+`;
+
+export const AddModalRow = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+export const AddModalField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+export const AddModalLabel = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+`;
+
+export const AddModalInput = styled.input`
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  box-sizing: border-box;
+  &::placeholder { color: #bbb; }
+`;
+
+export const AddModalSelect = styled.select`
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  cursor: pointer;
+`;
+
+export const AddModalInputWithIcon = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border-radius: 10px;
+`;
+
+export const AddModalFooter = styled.div`
+  padding: 0 24px 28px;
+`;
+
+export const AddModalButton = styled.button`
+  width: 100%;
+  height: 54px;
+  background: #ff871e;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+`;

@@ -1,27 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import LogoSvg from "../assets/logo1.svg";
+import { api } from "../api";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-
-const DUMMY_EXPENSE_DATES = {
-  "2026-2-6": 12500,
-  "2026-2-7": 45200,
-  "2026-2-9": 8900,
-  "2026-2-10": 31000,
-  "2026-2-20": 22000,
-};
-
-const DUMMY_DETAIL = {
-  "2026-2-20": [
-    { id: 1, name: "Family Mart", location: "편의점", krw: 9551, yen: 1020 },
-    { id: 2, name: "スシロー", location: "맛집", krw: 20592, yen: 2200 },
-  ],
-  "2026-2-9": [
-    { id: 1, name: "ドン·キホーテ", location: "쇼핑", krw: 8900, yen: 950 },
-  ],
-};
 
 export default function CountCalendar() {
   const navigate = useNavigate();
@@ -30,6 +13,37 @@ export default function CountCalendar() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
+  
+  const [receipts, setReceipts] = useState([]);
+  const [travelId, setTravelId] = useState(null);
+
+  // 1. 초기 로드 (사용자 및 여행 영수증 전체 데이터)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        if (!mounted) return;
+        const fetchedUser = u ?? null;
+        const tId = fetchedUser?.lastest_travel_id;
+
+        if (!tId) {
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+        setTravelId(tId);
+
+        const allReceipts = await api.spending.getReceipts(tId);
+        if (mounted && Array.isArray(allReceipts)) {
+          setReceipts(allReceipts);
+        }
+      } catch (err) {
+        console.warn("load calendar receipts failed", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [navigate]);
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -45,8 +59,25 @@ export default function CountCalendar() {
     setSelectedDay(null);
   };
 
-  const selectedKey = selectedDay ? `${calYear}-${calMonth + 1}-${selectedDay}` : null;
-  const selectedExpenses = selectedKey ? (DUMMY_DETAIL[selectedKey] || []) : [];
+  // 날짜별 총 지출액 매핑
+  const expenseDatesMap = receipts.reduce((acc, r) => {
+    const d = new Date(r.date);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    acc[key] = (acc[key] || 0) + Number(r.total_amount);
+    return acc;
+  }, {});
+
+  // 선택한 날짜의 상세 지출 내역
+  const selectedExpenses = selectedDay ? receipts.filter(r => {
+    const d = new Date(r.date);
+    return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === selectedDay;
+  }).map(r => ({
+    id: r.id,
+    name: r.title,
+    location: r.location || r.category || "지출",
+    krw: Math.round(r.total_krw || 0),
+    yen: Math.round(r.total_amount || 0)
+  })) : [];
 
   return (
     <Screen>
@@ -81,7 +112,7 @@ export default function CountCalendar() {
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const key = `${calYear}-${calMonth + 1}-${day}`;
-            const hasExpense = !!DUMMY_EXPENSE_DATES[key];
+            const hasExpense = !!expenseDatesMap[key];
             const isSelected = selectedDay === day;
             const isToday = calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate();
             return (

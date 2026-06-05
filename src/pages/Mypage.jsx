@@ -64,26 +64,52 @@ export default function MyPage() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    let mounted = true;
     const load = async () => {
       try {
         const [userData, travelData] = await Promise.all([
           api.auth.getUser(),
           api.travel.getAll(),
         ]);
-        if (userData) setUser(userData);
-        if (travelData?.length) setTravels(travelData);
-        else setTravels(DUMMY_TRAVELS);
-      } catch {
-        setTravels(DUMMY_TRAVELS);
+        if (!mounted) return;
+
+        if (userData) {
+          setUser({
+            nickname: userData.user_id || "알 수 없음",
+            email: userData.user_email || "",
+            profileImage: "https://picsum.photos/60/60?random=10",
+          });
+        }
+
+        if (Array.isArray(travelData) && travelData.length > 0) {
+          const mappedTravels = travelData.map((t) => {
+            const start = t.travel_start_date ? new Date(t.travel_start_date).toISOString().split("T")[0].replace(/-/g, ".") : "";
+            const end = t.travel_end_date ? new Date(t.travel_end_date).toISOString().split("T")[0].replace(/-/g, ".") : "";
+            return {
+              id: t.id,
+              destination: t.travel_region_id?.region_ko || t.travel_region,
+              startDate: start,
+              endDate: end,
+              name: t.travel_name,
+              image: `https://picsum.photos/400/200?random=${t.id}`,
+              isActive: t.id === userData?.lastest_travel_id,
+            };
+          });
+          setTravels(mappedTravels);
+        } else {
+          setTravels([]);
+        }
+      } catch (err) {
+        console.warn("load mypage data failed", err);
       }
     };
     load();
+    return () => { mounted = false; };
   }, []);
 
   const activeTravel = travels.find((t) => t.isActive) || travels[0];
 
   const handleLogout = () => {
-    // httpOnly 쿠키는 프론트에서 직접 삭제할 수 없으므로, 서버 로그아웃 엔드포인트가 생기면 여기서 호출하도록 바꿀 수 있습니다.
     navigate("/login");
   };
 
@@ -91,7 +117,6 @@ export default function MyPage() {
     if (isEditMode) {
       if (editNickname.trim()) {
         setUser((prev) => ({ ...prev, nickname: editNickname.trim() }));
-        try { api.auth.updateUser({ nickname: editNickname.trim() }); } catch {}
       }
       setIsEditMode(false);
     } else {
@@ -158,7 +183,7 @@ export default function MyPage() {
             </UserNameRow>
             <UserStatus>
               {activeTravel
-                ? `${activeTravel.destination ?? activeTravel.name?.replace("여행", "").trim()}을 여행중이에요`
+                ? `${activeTravel.destination ?? activeTravel.name?.replace("여행", "").trim()}을/를 여행중이에요`
                 : "여행 준비중이에요"}
             </UserStatus>
           </ProfileInfo>

@@ -4,8 +4,6 @@ import styled from "styled-components";
 import { api } from "../api";
 import LogoSvg from "../assets/logo1.svg";
 
-const TRAVEL_ID = 1;
-
 const CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
 const PAYMENT_METHODS = ["현금", "카드"];
 
@@ -19,6 +17,7 @@ export default function Camera() {
   const [step, setStep] = useState("camera"); // "camera" | "confirm" | "edit" | "done"
   const [uploading, setUploading] = useState(false);
   const [parsed, setParsed] = useState(null);
+  const [travelId, setTravelId] = useState(null);
   const [form, setForm] = useState({
     title: "", location: "", total_amount: "",
     date: new Date().toISOString().split("T")[0],
@@ -27,6 +26,23 @@ export default function Camera() {
   const [cameraError, setCameraError] = useState(false);
 
   useEffect(() => {
+    // 사용자 정보 로딩하여 travelId 가져오기
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        const tId = u?.lastest_travel_id;
+        if (!tId) {
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+        setTravelId(tId);
+      } catch (err) {
+        console.warn("getUser failed in camera page", err);
+        navigate("/login");
+      }
+    })();
+    
     startCamera();
     return () => stopCamera();
   }, []);
@@ -81,15 +97,21 @@ export default function Camera() {
       formData.append("file", blob, "receipt.jpg");
       const result = await api.spending.uploadReceipt(formData);
       setParsed(result);
+      
+      const paymentMethodHandled = result?.payment_method === "CARD" ? "카드" : "현금";
       setForm(prev => ({
         ...prev,
-        title: result?.title || "",
+        title: result?.title || "영수증 내역",
         total_amount: result?.total_amount || "",
         category: result?.category || "식비",
+        location: result?.location || "",
+        payment_method: paymentMethodHandled,
+        date: result?.date ? result.date.split("T")[0] : prev.date
       }));
-    } catch {
-      // API 미연결 시 더미 파싱 결과
-      setForm(prev => ({ ...prev, title: "영수증 내역", total_amount: "1200" }));
+    } catch (err) {
+      console.warn("AI analyze failed", err);
+      // 에러 시 기본값
+      setForm(prev => ({ ...prev, title: "영수증 내역", total_amount: "1200", payment_method: "현금" }));
     } finally {
       setUploading(false);
       setStep("edit");
@@ -98,12 +120,19 @@ export default function Camera() {
 
   const handleSave = async () => {
     try {
-      await api.spending.createReceipt(TRAVEL_ID, {
-        ...form,
+      const paymentMethodMapped = form.payment_method === "카드" ? "CARD" : "CASH";
+      const body = {
+        title: form.title,
+        location: form.location || form.category,
         total_amount: Number(form.total_amount),
-      });
-    } catch {
-      // API 미연결 시 무시
+        date: new Date(form.date).toISOString(),
+        currency: form.currency,
+        payment_method: paymentMethodMapped,
+        category: form.category,
+      };
+      await api.spending.createReceipt(travelId, body);
+    } catch (err) {
+      console.error("save receipt failed", err);
     }
     setStep("done");
   };
