@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -70,7 +71,6 @@ import PlusIcon from "../assets/plus2.svg";
 import RightArrow from "../assets/uiw_right.svg";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-const TOTAL_DAYS = 10;
 
 const DUMMY_RECOMMENDS = [
   {
@@ -104,13 +104,15 @@ const DUMMY_SCHEDULE = [
   { id: 5, time: "17:00", name: "니고 카페로", location: "카페", desc: "나고야에서 가장 유명한 카페 중 하나로, 특별한 분위기와 독특한 메뉴로 현지인들에게 사랑받는 공간이에요.", image: "https://picsum.photos/100/100?random=34", lat: 35.1722, lng: 136.9055 },
 ];
 
-function generateDates(count) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+function generateDates(start_date, end_date) {
+  const start = new Date(start_date);
+  start.setHours(0, 0, 0, 0);
   const dates = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+  const totalDays = Math.ceil((new Date(end_date) - start) / (1000 * 60 * 60 * 24)) + 1;
+  // console.log('Generating dates from', start_date, 'to', end_date, 'totalDays:', totalDays);
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
     dates.push({
       day: DAY_LABELS[d.getDay()],
       date: d.getDate(),
@@ -140,13 +142,13 @@ const ChevronDown = ({ color = "#fff" }) => (
 
 const PinIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#d0d0d0"/>
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#d0d0d0" />
   </svg>
 );
 
 const RefreshIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="#d0d0d0"/>
+    <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="#d0d0d0" />
   </svg>
 );
 
@@ -155,10 +157,13 @@ export default function Plan() {
   const dateScrollerRef = useRef(null);
   const todayItemRef = useRef(null);
 
+  const [totalDays, setTotalDays] = useState(7);
   const [activeTab, setActiveTab] = useState("daily");
-  const [dates] = useState(() => generateDates(TOTAL_DAYS));
+  const [dates, setDates] = useState(() => generateDates(new Date(), new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)));
   const [selectedDateKey, setSelectedDateKey] = useState(dates[0].key);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [travel, setTravel] = useState(null);
 
   const [startTimeActive, setStartTimeActive] = useState(false);
   const [endTimeActive, setEndTimeActive] = useState(false);
@@ -176,13 +181,81 @@ export default function Plan() {
     setAiInput("");
   };
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        const fetchedUser = u?.data ?? null;
+        setUser(fetchedUser);
+        if (!fetchedUser) {
+          alert("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
+          navigate("/login");
+        }
+
+        try {
+          const travelId = fetchedUser.lastest_travel_id;
+          const tr = await api.travel.getOne(travelId);
+          if (!tr.data && tr.status === 404) {
+            alert("현재 여행 정보를 불러올 수 없습니다. 여행 시작 페이지로 이동합니다.");
+            navigate("/travelstart");
+          }
+          await setTravel(tr.data);
+          setDates(await generateDates(tr.data.travel_start_date, tr.data.travel_end_date));
+          
+          const planner = await api.planner.getAll(travelId);
+
+          if (!isGenerated) {
+            const rec = await api.travel.recommendPlaces(travelId);
+          }
+        }
+        catch (err) {
+          console.warn('get travel failed', err);
+        }
+      } catch (err) {
+        console.warn('getUser failed', err);
+        alert("사용자 정보를 불러오는 데 실패했습니다. 로그인 페이지로 이동합니다.");
+        navigate("/login");
+      }
+    })();
+  }, [navigate]);
+
   const handleGenerate = () => {
-    if (isGenerated) {
-      console.log("일정 확정");
-    } else {
-      setIsGenerated(true);
-    }
+    (async () => {
+      try {
+        if (isGenerated) {
+          console.log("일정 확정");
+        } else {
+          const travelId = user.lastest_travel_id;
+          const body = { prompt: aiInput, date: selectedDate?.key };
+          if (activeTab === 'daily') {
+            const res = await api.planner.generate(travelId, body);
+            console.log('planner.generate res', res);
+          } else {
+            const res = await api.planner.totalGenerate(travelId, body);
+            console.log('planner.totalGenerate res', res);
+          }
+          setIsGenerated(true);
+        }
+      } catch (err) {
+        console.error('generate failed', err);
+        alert('일정 생성에 실패했습니다.');
+      }
+    })();
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        if (!mounted) return;
+        setUser(u?.data ?? null);
+      } catch (err) {
+        console.warn('getUser failed', err);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   return (
     <Screen>

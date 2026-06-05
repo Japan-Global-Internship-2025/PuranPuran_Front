@@ -69,7 +69,7 @@ export default function MyPage() {
   const activeTravel = travels.find(t => t.isActive) || travels[0];
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    // httpOnly 쿠키는 프론트에서 직접 삭제할 수 없으므로, 서버 로그아웃 엔드포인트가 생기면 여기서 호출하도록 바꿀 수 있습니다.
     navigate("/login");
   };
 

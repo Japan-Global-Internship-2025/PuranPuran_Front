@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api";
 import {
   Screen, Header, BackButton, HeaderTitle,
   Body, TopMessage, TopSub, TopTitle,
@@ -42,12 +43,12 @@ const TRANSPORTS = [
 
 const WALK_DISTANCES = [
   { id: "any",  label: "상관 없음" },
-  { id: "10",   label: "10분 (약 0.8km)" },
-  { id: "20",   label: "20분 (약 1.5km)" },
-  { id: "30",   label: "30분 (약 2.3km)" },
-  { id: "40",   label: "40분 (약 3km)" },
-  { id: "50",   label: "50분 (약 3.8km)" },
-  { id: "60",   label: "60분 (약 4.5km)" },
+  { id: "10km",   label: "10분 (약 0.8km)" },
+  { id: "20km",   label: "20분 (약 1.5km)" },
+  { id: "30km",   label: "30분 (약 2.3km)" },
+  { id: "40km",   label: "40분 (약 3km)" },
+  { id: "50km",   label: "50분 (약 3.8km)" },
+  { id: "60km",   label: "60분 (약 4.5km)" },
 ];
 
 
@@ -123,12 +124,25 @@ export default function TravelStart() {
 
   const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0;
 
-  const handleStart = () => {
-    // 더미 
-    console.log("여행 정보:", { region, startDate, endDate, transports, walkDistances });
-    navigate("/home");
-
-    
+  const handleStart = async () => {
+    // 여행 생성 API 호출
+    try {
+      const body = {
+        travel_name: `${region} 여행`,
+        travel_region: region,
+        travel_start_date: new Date(startDate).toISOString(),
+        travel_end_date: new Date(endDate).toISOString(),
+        travel_budget: 1000000,
+        transportation: transports,
+        walk_distance: walkDistances,
+        lodging_info: `${region}역 근처 호텔`,
+      };
+      // console.log("Creating travel with body:", body);
+      await api.travel.create(body);
+      navigate("/home");
+    } catch (err) {
+      console.warn("travel.create failed", err);
+    }
   };
 
   /* ── 날짜 포맷 표시 ── */

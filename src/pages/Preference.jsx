@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { api } from "../api";
 import {
   Screen,
   Header,
@@ -68,10 +69,14 @@ export default function Preference() {
     });
   };
 
-  const handleComplete = () => {
-    // 더미
-    console.log("선택한 취향:", selected);
-    navigate("/travelstart");
+  const handleComplete = async () => {
+    try {
+      await api.auth.updateUser({ taste: JSON.stringify(selected) });
+      navigate("/travelstart");
+    } catch (err) {
+      console.error(err);
+      alert("취향 저장에 실패했습니다.");
+    }
 
     // try {
     //   const response = await fetch("", {
