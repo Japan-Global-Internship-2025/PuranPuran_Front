@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import {
@@ -26,9 +26,8 @@ import { api } from "../api";
 
 import TabHome from "../assets/tab-home.svg";
 import TabCalendar from "../assets/tab-calendar.svg";
-import TabCamera from "../assets/tab-user.svg";
+import TabCamera from "../assets/tab-camera.svg";
 import TabUser from "../assets/tab-user.svg";
-import Setting from "../assets/uil_setting.svg";
 
 const DUMMY_USER = {
   nickname: "MINJAE98",
@@ -37,9 +36,22 @@ const DUMMY_USER = {
 };
 
 const DUMMY_TRAVELS = [
-  { id: 1, name: "2026 나고야 여행", startDate: "2026-05-27", endDate: "2026-05-31", isActive: true },
-  { id: 2, name: "2024 도쿄 여행", startDate: "2024-11-01", endDate: "2024-11-07", isActive: false },
-  { id: 3, name: "2023 오사카 여행", startDate: "2023-08-10", endDate: "2023-08-14", isActive: false },
+  {
+    id: 1,
+    destination: "일본 오사카",
+    startDate: "2025.12.21",
+    endDate: "2025.12.27",
+    image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&q=80",
+    isActive: false,
+  },
+  {
+    id: 2,
+    destination: "일본 도쿄",
+    startDate: "2024.02.03",
+    endDate: "2024.02.07",
+    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=500&q=80",
+    isActive: false,
+  },
 ];
 
 export default function MyPage() {
@@ -47,7 +59,9 @@ export default function MyPage() {
   const [user, setUser] = useState(DUMMY_USER);
   const [travels, setTravels] = useState([]);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editNickname, setEditNickname] = useState("");
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -66,27 +80,86 @@ export default function MyPage() {
     load();
   }, []);
 
-  const activeTravel = travels.find(t => t.isActive) || travels[0];
+  const activeTravel = travels.find((t) => t.isActive) || travels[0];
 
   const handleLogout = () => {
     // httpOnly 쿠키는 프론트에서 직접 삭제할 수 없으므로, 서버 로그아웃 엔드포인트가 생기면 여기서 호출하도록 바꿀 수 있습니다.
     navigate("/login");
   };
 
+  const handleEditToggle = () => {
+    if (isEditMode) {
+      if (editNickname.trim()) {
+        setUser((prev) => ({ ...prev, nickname: editNickname.trim() }));
+        try { api.auth.updateUser({ nickname: editNickname.trim() }); } catch {}
+      }
+      setIsEditMode(false);
+    } else {
+      setEditNickname(user.nickname);
+      setIsEditMode(true);
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setUser((prev) => ({ ...prev, profileImage: url }));
+    }
+  };
+
   return (
     <Screen>
       <Header>
         <ProfileSection>
-          <Avatar src={user.profileImage} alt="프로필" />
+          {isEditMode ? (
+            <AvatarWrapper>
+              <Avatar src={user.profileImage} alt="프로필" />
+              <AvatarAddBtn onClick={() => fileInputRef.current?.click()}>+</AvatarAddBtn>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handlePhotoChange}
+              />
+            </AvatarWrapper>
+          ) : (
+            <DefaultAvatar>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" fill="rgba(255,255,255,0.6)" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="rgba(255,255,255,0.6)" />
+              </svg>
+            </DefaultAvatar>
+          )}
+
           <ProfileInfo>
-            <UserName>
-              {user.nickname}님
-              <SettingsIcon onClick={() => setShowEditModal(true)}>
-                <img src={Setting} alt="설정" />
+            <UserNameRow>
+              {isEditMode ? (
+                <NicknameInput
+                  value={editNickname}
+                  onChange={(e) => setEditNickname(e.target.value)}
+                  autoFocus
+                />
+              ) : (
+                <UserName>{user.nickname}님</UserName>
+              )}
+              <SettingsIcon onClick={handleEditToggle}>
+                {isEditMode ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12l5 5L19 7" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </SettingsIcon>
-            </UserName>
+            </UserNameRow>
             <UserStatus>
-              {activeTravel ? `${activeTravel.name.replace("여행", "").trim()}을 여행중이에요` : "여행 준비중이에요"}
+              {activeTravel
+                ? `${activeTravel.destination ?? activeTravel.name?.replace("여행", "").trim()}을 여행중이에요`
+                : "여행 준비중이에요"}
             </UserStatus>
           </ProfileInfo>
         </ProfileSection>
@@ -118,40 +191,30 @@ export default function MyPage() {
           <MenuIcon>☁️</MenuIcon>
           <MenuContent>
             <MenuSub>지금까지의 여행을 살펴보세요</MenuSub>
-            <MenuTitle>여행 기록 보기</MenuTitle>
+            <MenuTitle>여행기록 보기</MenuTitle>
           </MenuContent>
           <ArrowIcon isOpen={isRecordOpen}>⌄</ArrowIcon>
         </MenuItem>
 
         {isRecordOpen && (
-          <TravelSubList>
-            {travels.map(t => (
-              <TravelSubItem
+          <TravelImageList>
+            {travels.map((t) => (
+              <TravelImageCard
                 key={t.id}
-                $active={t.isActive}
+                $image={t.image}
                 onClick={() => navigate("/plan")}
               >
-                <TravelSubDot $active={t.isActive} />
-                <TravelSubName>{t.name}</TravelSubName>
-                <TravelSubDate>{t.startDate?.slice(0, 7)}</TravelSubDate>
-                {t.isActive && <ActiveBadge>진행중</ActiveBadge>}
-              </TravelSubItem>
+                <TravelImageOverlay>
+                  <TravelImageDate>
+                    {t.startDate} - {t.endDate}
+                  </TravelImageDate>
+                  <TravelImageName>{t.destination ?? t.name}</TravelImageName>
+                </TravelImageOverlay>
+              </TravelImageCard>
             ))}
-          </TravelSubList>
+          </TravelImageList>
         )}
       </MenuList>
-
-      {/* 현재 여행 카드 */}
-      {activeTravel && (
-        <TravelCard onClick={() => navigate("/plan")}>
-          <TravelCardBadge>🗺 현재 여행</TravelCardBadge>
-          <TravelCardName>{activeTravel.name}</TravelCardName>
-          <TravelCardDate>
-            {activeTravel.startDate} ~ {activeTravel.endDate}
-          </TravelCardDate>
-          <TravelCardArrow>일정 보러가기 →</TravelCardArrow>
-        </TravelCard>
-      )}
 
       <LogoutButton onClick={handleLogout}>로그아웃하기</LogoutButton>
 
@@ -163,195 +226,110 @@ export default function MyPage() {
           <NavIcon><img src={TabCalendar} alt="일정" /></NavIcon>
         </NavItem>
         <NavItem onClick={() => navigate("/count")}>
-          <NavIcon><img src={TabCamera} alt="가계부" style={{ filter: "grayscale(100%) opacity(0.4)" }} /></NavIcon>
+          <NavIcon><img src={TabCamera} alt="가계부" /></NavIcon>
         </NavItem>
         <NavItem onClick={() => navigate("/mypage")}>
           <NavIcon $active><img src={TabUser} alt="마이페이지" /></NavIcon>
         </NavItem>
       </BottomNav>
-
-      {showEditModal && (
-        <EditProfileModal user={user} onClose={() => setShowEditModal(false)} onSave={setUser} />
-      )}
     </Screen>
   );
 }
 
-/* ===== 프로필 편집 모달 ===== */
-function EditProfileModal({ user, onClose, onSave }) {
-  const [nickname, setNickname] = useState(user.nickname);
-
-  const handleSave = async () => {
-    try {
-      await api.auth.updateUser({ nickname });
-    } catch { /* API 미연결 */ }
-    onSave(prev => ({ ...prev, nickname }));
-    onClose();
-  };
-
-  return (
-    <ModalOverlay onClick={onClose}>
-      <ModalSheet onClick={e => e.stopPropagation()}>
-        <ModalHandle />
-        <ModalTitle>프로필 수정</ModalTitle>
-        <ModalField>
-          <ModalLabel>닉네임</ModalLabel>
-          <ModalInput value={nickname} onChange={e => setNickname(e.target.value)} placeholder="닉네임 입력" />
-        </ModalField>
-        <ModalSave onClick={handleSave}>저장하기</ModalSave>
-      </ModalSheet>
-    </ModalOverlay>
-  );
-}
-
 /* ===== 추가 스타일 ===== */
-const TravelSubList = styled.div`
-  background: #f9f9f9;
-  margin: -4px 0 8px;
+
+const UserNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+`;
+
+const NicknameInput = styled.input`
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+  outline: none;
+  width: 160px;
+  padding: 0 0 2px;
+  &::placeholder { color: rgba(255,255,255,0.5); }
+`;
+
+const AvatarWrapper = styled.div`
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+`;
+
+const AvatarAddBtn = styled.button`
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ff871e;
+  border: 2px solid #ff871e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+`;
+
+const DefaultAvatar = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+const TravelImageList = styled.div`
+  margin: -4px 0 0;
   border-radius: 0 0 16px 16px;
   overflow: hidden;
 `;
 
-const TravelSubItem = styled.div`
+const TravelImageCard = styled.div`
+  position: relative;
+  height: 130px;
+  background-image: url(${(props) => props.$image});
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const TravelImageOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.1) 100%);
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 24px 14px 60px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  &:last-child { border-bottom: none; }
-  &:hover { background: #f5f5f5; }
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px 16px;
 `;
 
-const TravelSubDot = styled.div`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: ${({ $active }) => ($active ? "#ff871e" : "#ddd")};
-  flex-shrink: 0;
-`;
-
-const TravelSubName = styled.div`
-  flex: 1;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-`;
-
-const TravelSubDate = styled.div`
+const TravelImageDate = styled.div`
   font-size: 12px;
-  color: #aaa;
-`;
-
-const ActiveBadge = styled.div`
-  background: #fff5eb;
-  color: #ff871e;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-`;
-
-const TravelCard = styled.div`
-  margin: 0 20px 16px;
-  background: linear-gradient(135deg, #ff871e 0%, #ff6b00 100%);
-  border-radius: 20px;
-  padding: 18px 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(255,135,30,0.3);
-`;
-
-const TravelCardBadge = styled.div`
-  font-size: 12px;
-  color: rgba(255,255,255,0.8);
-  margin-bottom: 6px;
-`;
-
-const TravelCardName = styled.div`
-  font-size: 18px;
-  font-weight: 800;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.85);
   margin-bottom: 4px;
 `;
 
-const TravelCardDate = styled.div`
-  font-size: 12px;
-  color: rgba(255,255,255,0.75);
-  margin-bottom: 12px;
-`;
-
-const TravelCardArrow = styled.div`
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.9);
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-`;
-
-const ModalSheet = styled.div`
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  background: #fff;
-  border-radius: 24px 24px 0 0;
-  padding: 12px 20px 40px;
-`;
-
-const ModalHandle = styled.div`
-  width: 40px;
-  height: 4px;
-  background: #e0e0e0;
-  border-radius: 2px;
-  margin: 0 auto 20px;
-`;
-
-const ModalTitle = styled.h2`
+const TravelImageName = styled.div`
   font-size: 18px;
   font-weight: 700;
-  color: #111;
-  margin: 0 0 20px;
-`;
-
-const ModalField = styled.div`
-  margin-bottom: 16px;
-`;
-
-const ModalLabel = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
-`;
-
-const ModalInput = styled.input`
-  width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border: 1.5px solid #e6e6e6;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #111;
-  outline: none;
-  box-sizing: border-box;
-  &:focus { border-color: #ff871e; }
-`;
-
-const ModalSave = styled.button`
-  width: 100%;
-  height: 52px;
-  margin-top: 8px;
-  background: #ff871e;
-  border: none;
-  border-radius: 14px;
   color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
 `;

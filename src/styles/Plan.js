@@ -4,7 +4,7 @@ export const Screen = styled.div`
   width: 100%;
   max-width: 480px;
   min-height: 100dvh;
-  background: #fff;
+  background: #f8f8f8;
   padding-bottom: calc(180px + env(safe-area-inset-bottom));
   overflow-x: hidden;
   margin: 0 auto;
@@ -231,9 +231,8 @@ export const AiButton = styled.button`
 
 /* ===== 빈 상태 ===== */
 export const EmptyState = styled.div`
-  padding: 40px 20px 0px;
-  background: #fff;
-  margin-top: -20px;
+  padding: 16px 20px 0px;
+  background: transparent;
 `;
 
 export const EmptyText = styled.div`
@@ -245,7 +244,7 @@ export const EmptyText = styled.div`
 
 /* ===== 추천 섹션 ===== */
 export const RecommendSection = styled.section`
-  background: #fff;
+  background: transparent;
   margin: 0;
   padding: 4px 20px 200px;
 `;
@@ -432,10 +431,8 @@ export const NavIcon = styled.div`
 
 /* ===== 생성된 일정 뷰 ===== */
 export const ScheduleSection = styled.div`
-  background: #fff;
+  background: transparent;
   padding: 20px 20px 0;
-  margin-top: -20px;
-  border-radius: 20px 20px 0 0;
 `;
 
 export const ScheduleTitle = styled.h2`
@@ -454,15 +451,16 @@ export const ScheduleHighlight = styled.span`
 export const ScheduleSubtitle = styled.p`
   font-size: 12px;
   color: #aaa;
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 `;
 
 export const MapWrapper = styled.div`
-  width: 100%;
+  width: calc(100% + 40px);
   height: 200px;
-  border-radius: 16px;
+  margin-left: -20px;
+  margin-right: -20px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 28px;
 
   .leaflet-container {
     width: 100%;
@@ -493,39 +491,54 @@ export const ScheduleFooterText = styled.p`
 
 export const TimelineList = styled.div`
   padding-bottom: 8px;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 28px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #ffe0cc;
+    z-index: 0;
+  }
 `;
 
 export const TimelineRow = styled.div`
   display: flex;
   align-items: flex-start;
-  position: relative;
-  padding-bottom: 12px;
-
-  &:not(:last-child)::after {
-    content: "";
-    position: absolute;
-    left: 29px;
-    top: 56px;
-    width: 2px;
-    bottom: 0;
-    background: #ffe0cc;
-  }
+  padding-bottom: 16px;
 `;
 
 export const TimelineLeft = styled.div`
-  width: 60px;
+  width: fit-content;
   flex-shrink: 0;
   margin-right: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
+`;
+
+export const TimelineLeftLast = styled.div`
+  width: fit-content;
+  flex-shrink: 0;
+  margin-right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
 `;
 
 export const NumberBadge = styled.div`
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
   background: #ff871e;
   color: #fff;
   font-size: 11px;
@@ -533,39 +546,42 @@ export const NumberBadge = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 `;
 
 export const TimePill = styled.div`
   border: 1.5px solid #ff871e;
   border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 600;
   color: #ff871e;
   background: #fff;
   white-space: nowrap;
+  text-align: center;
 `;
 
 export const TimelineCard = styled.div`
   flex: 1;
+  min-width: 0;
   background: #fff;
-  border: 1px solid #ebebeb;
+  border: 1.5px solid #e0e0f0;
   border-radius: 14px;
-  padding: 12px;
+  padding: 14px 14px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 `;
 
 export const CardTopRow = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 `;
 
 export const TimelineImage = styled.img`
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
@@ -575,26 +591,29 @@ export const TimelineImage = styled.img`
 export const TimelineInfo = styled.div`
   flex: 1;
   min-width: 0;
+  padding-top: 4px;
 `;
 
 export const TimelineName = styled.div`
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #111;
-  margin-bottom: 2px;
-`;
-
-export const TimelineLocation = styled.div`
-  font-size: 11px;
-  color: #9a9a9a;
-  font-weight: 500;
   margin-bottom: 4px;
 `;
 
+export const TimelineLocation = styled.div`
+  font-size: 12px;
+  color: #888;
+  font-weight: 400;
+`;
+
 export const TimelineDesc = styled.div`
-  font-size: 11px;
-  color: #777;
-  line-height: 1.5;
+  font-size: 14px;
+  color: #616161;
+  line-height: 1.6;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -603,18 +622,18 @@ export const TimelineDesc = styled.div`
 
 export const TimelineActions = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 4px;
   flex-shrink: 0;
+  padding-top: 2px;
 `;
 
 export const ActionBtn = styled.button`
   background: none;
   border: none;
-  padding: 2px;
+  padding: 4px;
   cursor: pointer;
-  color: #ddd;
-  font-size: 18px;
+  color: #ccc;
   display: flex;
   align-items: center;
   justify-content: center;

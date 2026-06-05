@@ -9,7 +9,7 @@ export const Screen = styled.div`
 `;
 
 export const Header = styled.header`
-  height: 56px;
+  height: 60px;
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -17,12 +17,9 @@ export const Header = styled.header`
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
 `;
 
-export const Logo = styled.h1`
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #ffffff;
-  line-height: 30px;
+export const Logo = styled.img`
+  height: 30px;
+  display: block;
 `;
 
 //예산

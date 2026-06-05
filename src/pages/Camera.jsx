@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { api } from "../api";
+import LogoSvg from "../assets/logo1.svg";
 
 const TRAVEL_ID = 1;
 
@@ -197,11 +198,13 @@ export default function Camera() {
 
   return (
     <Screen>
-      <CameraHeader>
-        <BackBtn onClick={() => navigate("/count")}>←</BackBtn>
-        <CameraTitle>영수증 촬영</CameraTitle>
-        <GalleryBtn onClick={() => fileInputRef.current?.click()}>갤러리</GalleryBtn>
-      </CameraHeader>
+      <OrangeHeader>
+        <LogoImg src={LogoSvg} alt="PURAN PURAN" />
+      </OrangeHeader>
+
+      <DarkNav>
+        <BackBtn onClick={() => navigate("/count")}>‹</BackBtn>
+      </DarkNav>
 
       <ViewfinderContainer>
         {cameraError ? (
@@ -216,7 +219,6 @@ export default function Camera() {
             <Video ref={videoRef} autoPlay playsInline muted />
             <ViewfinderOverlay>
               <ViewfinderFrame />
-              <ViewfinderHint>영수증을 프레임 안에 맞춰주세요</ViewfinderHint>
             </ViewfinderOverlay>
           </>
         )}
@@ -231,13 +233,15 @@ export default function Camera() {
           style={{ display: "none" }}
           onChange={handleGallery}
         />
-        <GalleryIconBtn onClick={() => fileInputRef.current?.click()}>
-          <span style={{ fontSize: 20 }}>🖼</span>
-        </GalleryIconBtn>
+        <GalleryIconBtn onClick={() => fileInputRef.current?.click()} />
         <ShutterBtn onClick={takePhoto} disabled={cameraError}>
           <ShutterInner />
         </ShutterBtn>
-        <div style={{ width: 56 }} />
+        <FlashBtn>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="white" />
+          </svg>
+        </FlashBtn>
       </CameraControls>
     </Screen>
   );
@@ -248,7 +252,7 @@ const Screen = styled.div`
   width: 100%;
   max-width: 480px;
   min-height: 100dvh;
-  background: #111;
+  background: #3a3a3a;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -256,51 +260,48 @@ const Screen = styled.div`
   overflow: hidden;
 `;
 
-const CameraHeader = styled.div`
+const OrangeHeader = styled.header`
+  height: 60px;
+  background: #ff871e;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: #111;
-  z-index: 10;
+  padding: 0 20px;
+  flex-shrink: 0;
 `;
 
-const CameraTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+const LogoImg = styled.img`
+  height: 28px;
+  display: block;
+`;
+
+const DarkNav = styled.div`
+  padding: 10px 16px 4px;
+  background: #3a3a3a;
 `;
 
 const BackBtn = styled.button`
   background: none;
   border: none;
   color: #fff;
-  font-size: 22px;
+  font-size: 28px;
   cursor: pointer;
-  padding: 4px;
-  width: 40px;
-  text-align: left;
-`;
-
-const GalleryBtn = styled.button`
-  background: none;
-  border: none;
-  color: #ff871e;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
 `;
 
 const ViewfinderContainer = styled.div`
   flex: 1;
   position: relative;
-  background: #000;
+  background: #3a3a3a;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 12px 32px;
 `;
 
 const Video = styled.video`
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -312,67 +313,68 @@ const ViewfinderOverlay = styled.div`
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
 `;
 
 const ViewfinderFrame = styled.div`
-  width: 280px;
-  height: 200px;
-  border: 2px solid rgba(255,255,255,0.8);
-  border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
-`;
-
-const ViewfinderHint = styled.div`
-  color: rgba(255,255,255,0.8);
-  font-size: 13px;
-  font-weight: 500;
+  width: 72%;
+  aspect-ratio: 0.63;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 20px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
 `;
 
 const CameraControls = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 40px 40px;
-  background: #111;
+  padding: 28px 48px 44px;
+  background: #3a3a3a;
+  flex-shrink: 0;
 `;
 
 const GalleryIconBtn = styled.button`
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.28);
   border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 `;
 
 const ShutterBtn = styled.button`
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.9);
-  border: 4px solid rgba(255,255,255,0.4);
+  background: transparent;
+  border: 4px solid #ff871e;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  padding: 0;
   transition: transform 0.15s;
   &:active { transform: scale(0.93); }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 `;
 
 const ShutterInner = styled.div`
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #ff871e;
+`;
+
+const FlashBtn = styled.button`
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  background: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const CameraErrorBox = styled.div`
