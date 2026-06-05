@@ -64,6 +64,7 @@ import rice from "../assets/rice.svg";
 import drink from "../assets/tabler_cup.svg";
 import shopping from "../assets/shopping.svg";
 import other from "../assets/gg.svg";
+import LogoSvg from "../assets/logo1.svg";
 
 const TRAVEL_ID = 1;
 
@@ -86,10 +87,11 @@ const DUMMY_DATA = {
 // 지출 직접 입력 모달
 function AddExpenseModal({ onClose, onSave }) {
   const [form, setForm] = useState({
-    title: "", location: "", total_amount: "", date: new Date().toISOString().split("T")[0],
+    title: "", location: "", total_amount: "",
+    date: new Date().toISOString().split("T")[0],
+    time: "00:00",
     currency: "JPY", payment_method: "현금", category: "기타",
   });
-  const categories = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -97,53 +99,91 @@ function AddExpenseModal({ onClose, onSave }) {
     if (!form.title || !form.total_amount) return;
     try {
       await api.spending.createReceipt(TRAVEL_ID, { ...form, total_amount: Number(form.total_amount) });
-    } catch {
-      // API 미연결 시 로컬 처리
-    }
+    } catch { /* API 미연결 시 로컬 처리 */ }
     onSave(form);
     onClose();
   };
 
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalSheet onClick={e => e.stopPropagation()}>
-        <ModalHandle />
-        <ModalTitle>지출 추가</ModalTitle>
-        <ModalField>
-          <ModalLabel>내용</ModalLabel>
-          <ModalInput placeholder="예) Family Mart, 라멘" value={form.title} onChange={e => handleChange("title", e.target.value)} />
-        </ModalField>
-        <ModalField>
-          <ModalLabel>금액 (엔)</ModalLabel>
-          <ModalInput type="number" placeholder="0" value={form.total_amount} onChange={e => handleChange("total_amount", e.target.value)} />
-        </ModalField>
-        <ModalField>
-          <ModalLabel>카테고리</ModalLabel>
-          <CategoryPicker>
-            {categories.map(c => (
-              <CatChip key={c} $active={form.category === c} onClick={() => handleChange("category", c)}>
-                {c}
-              </CatChip>
-            ))}
-          </CategoryPicker>
-        </ModalField>
-        <ModalField>
-          <ModalLabel>결제 방법</ModalLabel>
-          <CategoryPicker>
-            {["현금", "카드"].map(p => (
-              <CatChip key={p} $active={form.payment_method === p} onClick={() => handleChange("payment_method", p)}>
-                {p}
-              </CatChip>
-            ))}
-          </CategoryPicker>
-        </ModalField>
-        <ModalField>
-          <ModalLabel>날짜</ModalLabel>
-          <ModalInput type="date" value={form.date} onChange={e => handleChange("date", e.target.value)} />
-        </ModalField>
-        <ModalSubmit onClick={handleSubmit}>추가하기</ModalSubmit>
-      </ModalSheet>
-    </ModalOverlay>
+    <ReceiptModalOverlay onClick={onClose}>
+      <ReceiptModalSheet onClick={e => e.stopPropagation()}>
+        <ReceiptModalHeader>
+          <ReceiptModalTitleArea>
+            <ReceiptModalSub>영수증을 직접 기입해 알려주세요</ReceiptModalSub>
+            <ReceiptModalTitle>영수증 입력하기</ReceiptModalTitle>
+          </ReceiptModalTitleArea>
+          <ReceiptModalClose onClick={onClose}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="#888" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </ReceiptModalClose>
+        </ReceiptModalHeader>
+
+        <ReceiptModalBody>
+          <ReceiptModalField>
+            <ReceiptModalLabel>제목</ReceiptModalLabel>
+            <ReceiptModalInput
+              placeholder="ex) 마트 장보기"
+              value={form.title}
+              onChange={e => handleChange("title", e.target.value)}
+            />
+          </ReceiptModalField>
+
+          <ReceiptModalRow>
+            <ReceiptModalField style={{ flex: 1 }}>
+              <ReceiptModalLabel>날짜</ReceiptModalLabel>
+              <ReceiptModalInput
+                type="date"
+                value={form.date}
+                onChange={e => handleChange("date", e.target.value)}
+                style={{ color: form.date ? "#333" : "#bbb" }}
+              />
+            </ReceiptModalField>
+            <ReceiptModalField style={{ flex: 1 }}>
+              <ReceiptModalLabel>시간</ReceiptModalLabel>
+              <ReceiptModalInput
+                type="time"
+                value={form.time}
+                onChange={e => handleChange("time", e.target.value)}
+              />
+            </ReceiptModalField>
+          </ReceiptModalRow>
+
+          <ReceiptModalField>
+            <ReceiptModalLabel>장소</ReceiptModalLabel>
+            <ReceiptModalInputWithIcon>
+              <svg width="14" height="16" viewBox="0 0 12 16" fill="none">
+                <path d="M6 0C3.243 0 1 2.243 1 5c0 3.75 5 11 5 11s5-7.25 5-11C11 2.243 8.757 0 6 0zm0 7a2 2 0 110-4 2 2 0 010 4z" fill="#bbb"/>
+              </svg>
+              <ReceiptModalInput
+                placeholder="장소 검색"
+                value={form.location}
+                onChange={e => handleChange("location", e.target.value)}
+                style={{ border: "none", background: "transparent", padding: 0, flex: 1, height: "auto" }}
+              />
+            </ReceiptModalInputWithIcon>
+          </ReceiptModalField>
+
+          <ReceiptModalField>
+            <ReceiptModalLabel>금액</ReceiptModalLabel>
+            <ReceiptModalInputWithIcon>
+              <span style={{ color: "#bbb", fontSize: 15, marginRight: 2 }}>¥</span>
+              <ReceiptModalInput
+                type="number"
+                placeholder="0"
+                value={form.total_amount}
+                onChange={e => handleChange("total_amount", e.target.value)}
+                style={{ border: "none", background: "transparent", padding: 0, flex: 1, height: "auto" }}
+              />
+            </ReceiptModalInputWithIcon>
+          </ReceiptModalField>
+        </ReceiptModalBody>
+
+        <ReceiptModalFooter>
+          <ReceiptModalButton onClick={handleSubmit}>일정 추가하기</ReceiptModalButton>
+        </ReceiptModalFooter>
+      </ReceiptModalSheet>
+    </ReceiptModalOverlay>
   );
 }
 
@@ -199,7 +239,19 @@ export default function Count() {
   return (
     <Screen>
       <Header>
-        <Logo>PuranPuran</Logo>
+        <Logo src={LogoSvg} alt="PURAN PURAN" />
+        <CalendarBtn onClick={() => navigate("/count-calendar")}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="4" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8"/>
+            <path d="M3 9H21" stroke="white" strokeWidth="1.8"/>
+            <path d="M8 2V5M16 2V5" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+            <circle cx="8" cy="13" r="1" fill="white"/>
+            <circle cx="12" cy="13" r="1" fill="white"/>
+            <circle cx="16" cy="13" r="1" fill="white"/>
+            <circle cx="8" cy="17" r="1" fill="white"/>
+            <circle cx="12" cy="17" r="1" fill="white"/>
+          </svg>
+        </CalendarBtn>
       </Header>
 
       {/* 예산 카드 */}
@@ -286,7 +338,7 @@ export default function Count() {
               <CategoryInfo>
                 <CategoryName>{category.name}</CategoryName>
                 <CategoryBar>
-                  <CategoryFill percent={category.percent} color={category.color} />
+                  <CategoryFill percent={category.percent} />
                 </CategoryBar>
               </CategoryInfo>
               <div style={{ textAlign: "right" }}>
@@ -397,6 +449,17 @@ const CatChip = styled.button`
   transition: all 0.15s;
 `;
 
+const CalendarBtn = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const ModalSubmit = styled.button`
   width: 100%;
   height: 52px;
@@ -404,6 +467,128 @@ const ModalSubmit = styled.button`
   background: #ff871e;
   border: none;
   border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  &:active { opacity: 0.9; }
+`;
+
+const ReceiptModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.52);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+`;
+
+const ReceiptModalSheet = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.22);
+`;
+
+const ReceiptModalHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 28px 24px 16px;
+  gap: 8px;
+`;
+
+const ReceiptModalTitleArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const ReceiptModalSub = styled.div`
+  font-size: 12px;
+  color: #aaa;
+`;
+
+const ReceiptModalTitle = styled.div`
+  font-size: 22px;
+  font-weight: 700;
+  color: #111;
+`;
+
+const ReceiptModalClose = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+`;
+
+const ReceiptModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 24px 24px;
+`;
+
+const ReceiptModalRow = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+const ReceiptModalField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const ReceiptModalLabel = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+`;
+
+const ReceiptModalInput = styled.input`
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  box-sizing: border-box;
+  &::placeholder { color: #bbb; }
+`;
+
+const ReceiptModalInputWithIcon = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border-radius: 10px;
+`;
+
+const ReceiptModalFooter = styled.div`
+  padding: 0 24px 28px;
+`;
+
+const ReceiptModalButton = styled.button`
+  width: 100%;
+  height: 54px;
+  background: #ff871e;
+  border: none;
+  border-radius: 12px;
   color: #fff;
   font-size: 16px;
   font-weight: 700;

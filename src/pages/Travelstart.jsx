@@ -9,6 +9,7 @@ import {
   CalendarGrid, CalendarDayLabel, CalendarCell, CalendarDay,
   Divider,
   Footer, StartButton,
+  BudgetInputWrapper, BudgetCurrency, BudgetInput, BudgetUnit,
 } from "../styles/Travelstart";
 
 
@@ -76,11 +77,13 @@ export default function TravelStart() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [region, setRegion] = useState(null);           // 단일 
-  const [transports, setTransports] = useState([]);     // 다중 
-  const [walkDistances, setWalkDistances] = useState([]); // 다중
+  const [region, setRegion] = useState(null);
+  const [transports, setTransports] = useState([]);
+  const [walkDistances, setWalkDistances] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [budget, setBudget] = useState("");
+  const [budgetFocused, setBudgetFocused] = useState(false);
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-indexed
 
@@ -121,7 +124,7 @@ export default function TravelStart() {
   };
 
 
-  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0;
+  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0 && budget;
 
   const handleStart = () => {
     // 더미 
@@ -291,6 +294,23 @@ export default function TravelStart() {
               </Chip>
             ))}
           </ChipGroup>
+        </Section>
+
+        {/* 예산 입력 */}
+        <Section>
+          <SectionTitle>전체 예산을 알려주세요</SectionTitle>
+          <BudgetInputWrapper $focused={budgetFocused}>
+            <BudgetCurrency>₩</BudgetCurrency>
+            <BudgetInput
+              type="number"
+              placeholder="0"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              onFocus={() => setBudgetFocused(true)}
+              onBlur={() => setBudgetFocused(false)}
+            />
+            <BudgetUnit>원</BudgetUnit>
+          </BudgetInputWrapper>
         </Section>
 
         <Footer>

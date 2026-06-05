@@ -9,6 +9,7 @@ import Plan from "./pages/Plan";
 import Count from "./pages/Count";
 import Camera from "./pages/Camera";
 import Mypage from "./pages/Mypage";
+import CountCalendar from "./pages/CountCalendar";
 export default function App() {
   return (
       <Routes>
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/plan" element={<Plan />} />
         <Route path="/count" element={<Count />} />
+        <Route path="/count-calendar" element={<CountCalendar />} />
         <Route path="/camera" element={<Camera />} />
         <Route path="/mypage" element={<Mypage />} />
       </Routes>
