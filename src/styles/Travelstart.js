@@ -223,6 +223,45 @@ export const CalendarDay = styled.div`
 `;
 
 
+export const BudgetInputWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid ${({ $focused }) => ($focused ? "#ff871e" : "#e6e6e6")};
+  border-radius: 10px;
+  padding: 0 14px;
+  height: 48px;
+  transition: border-color 0.15s;
+`;
+
+export const BudgetCurrency = styled.span`
+  font-size: 16px;
+  font-weight: 600;
+  color: #454545;
+  margin-right: 6px;
+`;
+
+export const BudgetInput = styled.input`
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;
+  background: transparent;
+
+  &::placeholder {
+    color: #c4c4c4;
+    font-weight: 400;
+  }
+`;
+
+export const BudgetUnit = styled.span`
+  font-size: 13px;
+  color: #aaa;
+  margin-left: 6px;
+`;
+
 export const Divider = styled.hr`
   border: 0;
   border-top: 1px solid #e6e6e6;

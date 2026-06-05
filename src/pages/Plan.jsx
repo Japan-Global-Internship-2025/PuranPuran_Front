@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { api } from "../api";
+import PlannerContent from "../components/PlannerContent";
+import AddPlanModal from "../components/AddPlanModal";
+import LoadingOverlay from "../components/LoadingOverlay";
 import {
   Screen,
   Header,
@@ -17,108 +19,54 @@ import {
   StyledTimeInput,
   TimeDisplayText,
   TimeSeparator,
-  AiInputSection,
-  AiInput,
-  AiButton,
-  EmptyState,
-  EmptyText,
-  SectionTitle,
-  Highlight,
-  RecommendSection,
-  RecommendCard,
-  RecommendImage,
-  RecommendContent,
-  RecommendName,
-  RecommendLocation,
-  RecommendDesc,
+  PlannerBox,
   PlusButton,
   GenerateButton,
   GenerateText,
   BottomNav,
   NavItem,
   NavIcon,
-  ScheduleSection,
-  ScheduleTitle,
-  ScheduleHighlight,
-  ScheduleSubtitle,
-  MapWrapper,
-  MapViewAllBtn,
-  TimelineList,
-  TimelineRow,
-  TimelineLeft,
-  NumberBadge,
-  TimePill,
-  TimelineCard,
-  CardTopRow,
-  TimelineImage,
-  TimelineInfo,
-  TimelineName,
-  TimelineLocation,
-  TimelineDesc,
-  TimelineActions,
-  ActionBtn,
-  ScheduleFooterText,
 } from "../styles/Plan";
 
+import {
+  CalendarWrap,
+  CalendarHeader,
+  CalendarNavBtn,
+  CalendarMonthTitle,
+  CalendarGrid,
+  CalendarDayLabel,
+  CalendarCell,
+  CalendarDay,
+} from "../styles/Travelstart";
 
 import TabHome from "../assets/tab-home.svg";
 import TabCalendar from "../assets/tab-calendar.svg";
 import TabCamera from "../assets/tab-camera.svg";
 import TabUser from "../assets/tab-user.svg";
-import SendArrow from "../assets/send-arrow.svg";
 import PlusIcon from "../assets/plus2.svg";
 import RightArrow from "../assets/uiw_right.svg";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-const TOTAL_DAYS = 10;
 
-const DUMMY_RECOMMENDS = [
-  {
-    id: 1,
-    name: "나고야성",
-    location: "역사지 · 역주변",
-    desc: "내부에서 에도 시대의 역사와 문화를 살펴볼 수 있고, 봄에는 벚꽃 명소로도 유명해요. 접근성도 좋아서 나고야 여행에서 들를 대표 스팟이에요.",
-    image: "https://picsum.photos/100/100?random=1",
-  },
-  {
-    id: 2,
-    name: "레고랜드 재팬",
-    location: "테마파크 · 나고야항",
-    desc: "일루미네이션 분위기 속에서 다양한 어트랙션을 즐길 수 있는 나고야 대표 테마파크에요. 주요 도시를 레고로 재현해 사진스팟으로도 유명해요.",
-    image: "https://picsum.photos/100/100?random=2",
-  },
-  {
-    id: 3,
-    name: "나고야성",
-    location: "역사지 · 역주변",
-    desc: "내부에서 에도 시대의 역사와 문화를 살펴볼 수 있고, 봄에는 벚꽃 명소로도 유명해요. 접근성도 좋아서 나고야 여행에서 들를 대표 스팟이에요.",
-    image: "https://picsum.photos/100/100?random=13",
-  },
-];
-
-const DUMMY_SCHEDULE = [
-  { id: 1, time: "12:00", name: "오스상점가", location: "소매 · 역주변", desc: "일본에서 가장 활기 넘치는 상점가 중 하나로, 가타레세풍의 상가와 저렴한 음식점을 즐길 수 있어요.", image: "https://picsum.photos/100/100?random=30", lat: 35.159, lng: 136.8985 },
-  { id: 2, time: "14:00", name: "아베혼 본점", location: "쇼핑 · 시가", desc: "나고야를 대표하는 백화점으로 유명한 브랜드와 다양한 식당이 있어 쇼핑과 식사를 한 번에 해결할 수 있어요.", image: "https://picsum.photos/100/100?random=31", lat: 35.1706, lng: 136.9067 },
-  { id: 3, time: "15:00", name: "히로스 사카에 본점", location: "소매 · 카페", desc: "현지인과 관광객 모두에게 인기 있는 복합문화공간으로 쇼핑과 카페를 동시에 즐길 수 있는 공간이에요.", image: "https://picsum.photos/100/100?random=32", lat: 35.1709, lng: 136.9071 },
-  { id: 4, time: "16:00", name: "오아시스 21", location: "쇼핑 · 나비가", desc: "유리로 된 지붕 구조물이 인상적인 복합시설로, 아래에는 버스 터미널과 상점들이 있어 나고야의 랜드마크에요.", image: "https://picsum.photos/100/100?random=33", lat: 35.1701, lng: 136.9075 },
-  { id: 5, time: "17:00", name: "니고 카페로", location: "카페", desc: "나고야에서 가장 유명한 카페 중 하나로, 특별한 분위기와 독특한 메뉴로 현지인들에게 사랑받는 공간이에요.", image: "https://picsum.photos/100/100?random=34", lat: 35.1722, lng: 136.9055 },
-];
-
-function generateDates(count) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+function generateDatesFromRange(startDateStr, endDateStr) {
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
   const dates = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+  const cur = new Date(start);
+  
+  while (cur <= end) {
     dates.push({
-      day: DAY_LABELS[d.getDay()],
-      date: d.getDate(),
-      month: d.getMonth() + 1,
-      year: d.getFullYear(),
-      isToday: i === 0,
-      key: `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
+      day: DAY_LABELS[cur.getDay()],
+      date: cur.getDate(),
+      month: cur.getMonth() + 1,
+      year: cur.getFullYear(),
+      isToday: cur.toDateString() === new Date().toDateString(),
+      key: `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`,
     });
+    cur.setDate(cur.getDate() + 1);
   }
   return dates;
 }
@@ -138,51 +86,362 @@ const ChevronDown = ({ color = "#fff" }) => (
   </svg>
 );
 
-const PinIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#d0d0d0"/>
-  </svg>
-);
-
-const RefreshIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="#d0d0d0"/>
-  </svg>
-);
-
 export default function Plan() {
   const navigate = useNavigate();
   const dateScrollerRef = useRef(null);
   const todayItemRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState("daily");
-  const [dates] = useState(() => generateDates(TOTAL_DAYS));
-  const [selectedDateKey, setSelectedDateKey] = useState(dates[0].key);
-  const [isGenerated, setIsGenerated] = useState(false);
+  
+  const [travelId, setTravelId] = useState(null);
+  const [travel, setTravel] = useState(null);
+  const [dates, setDates] = useState([]);
+  const [selectedDateKey, setSelectedDateKey] = useState("");
+  const [recommends, setRecommends] = useState([]);
+  const [allPlanners, setAllPlanners] = useState([]);
 
+  const [schedule, setSchedule] = useState([]);
+  const [currentPlace, setCurrentPlace] = useState("");
+  const [currentCategory, setCurrentCategory] = useState("");
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("18:00");
+  const [aiInput, setAiInput] = useState("");
+
+  const [isTotalGenerated, setIsTotalGenerated] = useState(false);
+  const [isTotalConfirmed, setIsTotalConfirmed] = useState(false);
+  const [totalSchedule, setTotalSchedule] = useState([]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [totalStartDate, setTotalStartDate] = useState(null);
+  const [totalEndDate, setTotalEndDate] = useState(null);
+
+  const [addModal, setAddModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const totalFirstDay = new Date(calYear, calMonth, 1).getDay();
+  const totalDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  
+  const prevCalMonth = () => {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
+    else setCalMonth(m => m - 1);
+  };
+  const nextCalMonth = () => {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
+    else setCalMonth(m => m + 1);
+  };
+  
   const [startTimeActive, setStartTimeActive] = useState(false);
   const [endTimeActive, setEndTimeActive] = useState(false);
-
-  const [startTime, setStartTime] = useState("00:00");
-  const [endTime, setEndTime] = useState("00:00");
-  const [aiInput, setAiInput] = useState("");
 
   const selectedDate = dates.find((d) => d.key === selectedDateKey);
 
   const handleNavClick = (path) => navigate(path);
 
-  const handleSubmitAi = () => {
-    if (!aiInput.trim()) return;
-    setAiInput("");
-  };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        if (!mounted) return;
+        const fetchedUser = u ?? null;
+        const tId = fetchedUser?.lastest_travel_id;
 
-  const handleGenerate = () => {
-    if (isGenerated) {
-      console.log("일정 확정");
-    } else {
-      setIsGenerated(true);
+        if (!tId) {
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+        setTravelId(tId);
+
+        const travelData = await api.travel.getOne(tId);
+        if (!mounted) return;
+        setTravel(travelData);
+
+        if (travelData.travel_start_date && travelData.travel_end_date) {
+          const generated = generateDatesFromRange(
+            travelData.travel_start_date,
+            travelData.travel_end_date
+          );
+          setDates(generated);
+          if (generated.length > 0) {
+            setSelectedDateKey(generated[0].key);
+          }
+          setTotalStartDate(new Date(travelData.travel_start_date));
+          setTotalEndDate(new Date(travelData.travel_end_date));
+        }
+
+        try {
+          const recs = await api.travel.recommendPlaces(tId);
+          if (mounted && Array.isArray(recs)) {
+            setRecommends(recs.map((rec) => ({
+              id: rec.id,
+              name: rec.title,
+              category: rec.category || "추천 관광지",
+              desc: rec.description || "",
+              image: rec.image_url || `https://picsum.photos/100/100?random=${rec.id}`,
+            })));
+          }
+        } catch (err) {
+          console.warn("recommendPlaces failed", err);
+        }
+
+        await refreshPlanners(tId);
+
+      } catch (err) {
+        console.warn("load travel data failed", err);
+        navigate("/login");
+      }
+    })();
+    return () => { mounted = false; };
+  }, [navigate]);
+
+  const refreshPlanners = async (tId) => {
+    try {
+      const planners = await api.planner.getAll(tId);
+      setAllPlanners(planners || []);
+      return planners;
+    } catch (err) {
+      console.warn("getAll planners failed", err);
+      return [];
     }
   };
+
+  useEffect(() => {
+    if (allPlanners.length > 0) {
+      // 여행 기간에 해당하는 DailyPlanner들만 모아서 totalSchedule로 변환
+      const mapped = allPlanners
+        .sort((a, b) => new Date(a.plan_date) - new Date(b.plan_date))
+        .map((plan, index) => ({
+          id: index + 1,
+          date: plan.plan_date,
+          name: plan.place || "여행지",
+          subName: plan.category || "",
+          address: "",
+          location: plan.category || "관광",
+          desc: plan.daily_description || plan.ai_request || "저장된 일정",
+          stayTime: "하루 일정",
+          image: `https://picsum.photos/400/200?random=${index + 100}`,
+          lat: 35.1706,
+          lng: 136.9067
+        }));
+      
+      if (mapped.length > 0) {
+        setTotalSchedule(mapped);
+        setIsTotalGenerated(true);
+        setIsTotalConfirmed(true);
+      }
+    }
+  }, [allPlanners]);
+
+  useEffect(() => {
+    if (!selectedDateKey || !allPlanners.length) {
+      setSchedule([]);
+      setCurrentPlace("");
+      setCurrentCategory("");
+      setIsGenerated(false);
+      setIsConfirmed(false);
+      return;
+    }
+
+    const matchedPlanner = allPlanners.find(
+      (p) => p.plan_date === selectedDateKey
+    );
+
+    if (matchedPlanner) {
+      const hasItems = Array.isArray(matchedPlanner.items) && matchedPlanner.items.length > 0;
+      const mapped = (matchedPlanner.items || []).map((item) => ({
+        id: item.id || item.sequence,
+        time: item.visit_time,
+        name: item.place_name,
+        subName: item.location || "",
+        address: item.location || "",
+        location: item.category,
+        desc: item.description,
+        stayTime: "약 1시간",
+        image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
+        lat: Number(item.latitude) || 35.1706,
+        lng: Number(item.longitude) || 136.9067,
+      })).sort((a, b) => a.id - b.id);
+
+      setSchedule(mapped);
+      setCurrentPlace(matchedPlanner.place || "");
+      setCurrentCategory(matchedPlanner.category || "");
+      setStartTime(matchedPlanner.start_time || "09:00");
+      setEndTime(matchedPlanner.end_time || "18:00");
+      setAiInput(matchedPlanner.ai_request || "");
+      
+      // 상세 일정이 있을 때만 확정 상태로 표시
+      setIsGenerated(hasItems);
+      setIsConfirmed(hasItems);
+    } else {
+      setSchedule([]);
+      setCurrentPlace("");
+      setCurrentCategory("");
+      setIsGenerated(false);
+      setIsConfirmed(false);
+    }
+  }, [selectedDateKey, allPlanners]);
+
+  const handleSubmitAi = () => {
+    if (!aiInput.trim()) return;
+    if (activeTab === "daily") handleGenerate();
+    else handleTotalGenerate();
+  };
+
+  const handleGenerate = async (forceRegenerate = false) => {
+    if (isGenerated && !forceRegenerate) {
+      await handleConfirmSave();
+    } else {
+      setIsLoading(true);
+      try {
+        const body = {
+          plan_date: selectedDateKey,
+          start_time: startTime.slice(0, 5),
+          end_time: endTime.slice(0, 5),
+          ai_request: aiInput
+        };
+        const response = await api.planner.generate(travelId, body);
+        
+        if (response && response.items) {
+          const mapped = response.items.map((item) => ({
+            id: item.id || item.sequence,
+            time: item.visit_time,
+            name: item.place_name,
+            subName: item.location || "",
+            address: item.location || "",
+            location: item.category,
+            desc: item.description,
+            stayTime: "약 1시간",
+            image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
+            lat: Number(item.latitude) || 35.1706,
+            lng: Number(item.longitude) || 136.9067,
+          })).sort((a, b) => a.id - b.id);
+
+          setSchedule(mapped);
+          setCurrentPlace(response.place || "여행지");
+          setCurrentCategory(response.category || "관광");
+          setIsGenerated(true);
+          setIsConfirmed(false);
+        } else {
+          alert("일정 생성에 실패했습니다.");
+        }
+      } catch (err) {
+        console.error("generate daily plan failed", err);
+        alert("일정 생성 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleConfirmSave = async () => {
+    setIsLoading(true);
+    try {
+      const body = {
+        place: currentPlace || "여행지",
+        category: currentCategory || "관광",
+        plan_date: selectedDateKey,
+        start_time: startTime,
+        end_time: endTime,
+        ai_request: aiInput,
+        items: schedule.map((item, index) => ({
+          visit_time: item.time || "12:00",
+          place_name: item.name,
+          category: item.location || "기타",
+          description: item.desc || "",
+          latitude: Number(item.lat),
+          longitude: Number(item.lng),
+          image_url: item.image || `https://picsum.photos/400/200?random=${index}`,
+        }))
+      };
+      
+      await api.planner.save(travelId, body);
+      alert("일정이 성공적으로 확정 저장되었습니다.");
+      setIsConfirmed(true);
+      await refreshPlanners(travelId);
+    } catch (err) {
+      console.error("save daily plan failed", err);
+      alert("일정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmedEdit = () => {
+    setIsConfirmed(false);
+  };
+
+  const handleTotalGenerate = async (forceRegenerate = false) => {
+    if (isTotalGenerated && !forceRegenerate) {
+      await handleTotalConfirmSave();
+    } else {
+      setIsLoading(true);
+      try {
+        const response = await api.planner.totalGenerate(travelId);
+        if (response && Array.isArray(response.dailyPlans)) {
+          const mapped = response.dailyPlans.map((plan, index) => ({
+            id: index + 1,
+            date: plan.plan_date,
+            name: plan.place || "여행지",
+            subName: plan.category || "",
+            address: "",
+            location: plan.category || "관광",
+            desc: plan.daily_description || "",
+            stayTime: "하루 일정",
+            image: `https://picsum.photos/400/200?random=${index + 100}`,
+            lat: 35.1706,
+            lng: 136.9067
+          }));
+          setTotalSchedule(mapped);
+          setIsTotalGenerated(true);
+          setIsTotalConfirmed(false);
+        } else {
+          alert("전체 일정 요약 생성에 실패했습니다.");
+        }
+      } catch (err) {
+        console.error("generate total plan failed", err);
+        alert("전체 일정 요약 생성 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleTotalConfirmSave = async () => {
+    setIsLoading(true);
+    try {
+      const body = {
+        dailyPlans: totalSchedule.map(item => ({
+          plan_date: item.date,
+          place: item.name,
+          category: item.location,
+          daily_description: item.desc
+        }))
+      };
+      await api.planner.totalSave(travelId, body);
+      
+      const places = totalSchedule.map(item => item.name);
+      await api.planner.totalPlacesSave(travelId, { places });
+
+      alert("전체 일정이 성공적으로 저장되었습니다.");
+      setIsTotalConfirmed(true);
+      await refreshPlanners(travelId);
+    } catch (err) {
+      console.error("save total plan failed", err);
+      alert("전체 일정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isCurrentTabConfirmed = activeTab === "daily" ? isConfirmed : isTotalConfirmed;
+  const isCurrentTabGenerated = activeTab === "daily" ? isGenerated : isTotalGenerated;
+  const currentGenerateHandler = () => activeTab === "daily" ? handleGenerate() : handleTotalGenerate();
 
   return (
     <Screen>
@@ -197,167 +456,163 @@ export default function Plan() {
         </TabContainer>
       </Header>
 
-      {/* 날짜 스크롤러 */}
-      <DateScroller ref={dateScrollerRef}>
-        {dates.map((item) => {
-          const isActive = selectedDateKey === item.key;
-          return (
-            <DateItem
-              key={item.key}
-              ref={item.isToday ? todayItemRef : null}
-              $active={isActive}
-              onClick={() => setSelectedDateKey(item.key)}
-            >
-              <DateDay $active={isActive}>{item.day}</DateDay>
-              <DateNum $active={isActive}>{item.date}</DateNum>
-              {item.isToday && <TodayDot $active={isActive} />}
-            </DateItem>
-          );
-        })}
-      </DateScroller>
-
-      {/* 시간 선택 */}
-      <TimeSelector>
-        <TimePickerWrapper $active={startTimeActive}>
-          <TimeDisplayText $active={startTimeActive}>
-            {formatDisplayTime(startTime)}
-          </TimeDisplayText>
-          <ChevronDown color={startTimeActive ? "#fff" : "#ff871e"} />
-          <StyledTimeInput
-            type="time"
-            value={startTime}
-            onFocus={() => setStartTimeActive(true)}
-            onBlur={() => setStartTimeActive(false)}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-        </TimePickerWrapper>
-
-        <TimeSeparator>—</TimeSeparator>
-
-        <TimePickerWrapper $active={endTimeActive}>
-          <TimeDisplayText $active={endTimeActive}>
-            {formatDisplayTime(endTime)}
-          </TimeDisplayText>
-          <ChevronDown color={endTimeActive ? "#fff" : "#ff871e"} />
-          <StyledTimeInput
-            type="time"
-            value={endTime}
-            onFocus={() => setEndTimeActive(true)}
-            onBlur={() => setEndTimeActive(false)}
-            onChange={(e) => setEndTime(e.target.value)}
-          />
-        </TimePickerWrapper>
-      </TimeSelector>
-
-      {/* AI 입력 */}
-      <AiInputSection>
-        <AiInput
-          type="text"
-          placeholder="AI에게 한줄 요청: 번화가에 가서 쇼핑도 하고 밥도..."
-          value={aiInput}
-          onChange={(e) => setAiInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAi(); }}
-        />
-        <AiButton onClick={handleSubmitAi} aria-label="전송">
-          <img src={SendArrow} alt="전송" />
-        </AiButton>
-      </AiInputSection>
-
-      {/* 일정 없음 or 생성된 일정 */}
-      {!isGenerated ? (
+      {activeTab === "total" && (
         <>
-          <EmptyState>
-            <EmptyText>일정이 아직 없어요🥲 생성을 요청해보세요</EmptyText>
-          </EmptyState>
+          <CalendarWrap style={{ margin: "16px 20px 0" }}>
+            <CalendarHeader>
+              <CalendarNavBtn onClick={prevCalMonth}>
+                <svg width="10" height="16" viewBox="0 0 8 14" fill="none">
+                  <path d="M7 1L1 7L7 13" stroke="#454545" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </CalendarNavBtn>
+              <CalendarMonthTitle>{calYear}년 {calMonth + 1}월</CalendarMonthTitle>
+              <CalendarNavBtn onClick={nextCalMonth}>
+                <svg width="10" height="16" viewBox="0 0 8 14" fill="none">
+                  <path d="M1 1L7 7L1 13" stroke="#454545" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </CalendarNavBtn>
+            </CalendarHeader>
 
-          <RecommendSection>
-            <SectionTitle>
-              <Highlight>나고야</Highlight> 여행지 추천
-            </SectionTitle>
-            {DUMMY_RECOMMENDS.map((item) => (
-              <RecommendCard key={item.id}>
-                <RecommendImage src={item.image} alt={item.name} />
-                <RecommendContent>
-                  <RecommendName>{item.name}</RecommendName>
-                  <RecommendLocation>{item.location}</RecommendLocation>
-                  <RecommendDesc>{item.desc}</RecommendDesc>
-                </RecommendContent>
-              </RecommendCard>
-            ))}
-          </RecommendSection>
-        </>
-      ) : (
-        <ScheduleSection>
-          <ScheduleTitle>
-            <ScheduleHighlight>
-              {selectedDate?.date}일 {selectedDate?.day}요일
-            </ScheduleHighlight>의 추천일정이에요
-          </ScheduleTitle>
-          <ScheduleSubtitle>일정을 드래그하며 편집하고 여행을 계획해보세요.</ScheduleSubtitle>
-
-          {/* 지도 */}
-          <MapWrapper>
-            <MapContainer
-              center={[35.1706, 136.9067]}
-              zoom={14}
-              zoomControl={false}
-              attributionControl={false}
-            >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {DUMMY_SCHEDULE.map((item) => (
-                <CircleMarker
-                  key={item.id}
-                  center={[item.lat, item.lng]}
-                  radius={10}
-                  pathOptions={{ color: "#fff", fillColor: "#ff871e", fillOpacity: 1, weight: 2 }}
-                >
-                  <Popup>{item.name}</Popup>
-                </CircleMarker>
+            <CalendarGrid>
+              {DAY_LABELS.map((d) => (
+                <CalendarDayLabel key={d}>{d}</CalendarDayLabel>
               ))}
-            </MapContainer>
-          </MapWrapper>
-          <MapViewAllBtn>
-            전체 지도보기
-            <img src={RightArrow} alt="" style={{ width: 12, height: 12, opacity: 0.5 }} />
-          </MapViewAllBtn>
+              {Array.from({ length: totalFirstDay }).map((_, i) => (
+                <CalendarCell key={`empty-${i}`} $empty />
+              ))}
+              {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                const date = new Date(calYear, calMonth, i + 1);
+                const isStart = totalStartDate?.toDateString() === date.toDateString();
+                const isEnd = totalEndDate?.toDateString() === date.toDateString();
+                const inRange = totalStartDate && totalEndDate && date > totalStartDate && date < totalEndDate;
+                const isToday = today.toDateString() === date.toDateString();
+                return (
+                  <CalendarCell
+                    key={i}
+                    $isStart={isStart}
+                    $isEnd={isEnd}
+                    $inRange={inRange}
+                  >
+                    <CalendarDay $isStart={isStart} $isEnd={isEnd} $today={isToday}>
+                      {i + 1}
+                    </CalendarDay>
+                  </CalendarCell>
+                );
+              })}
+            </CalendarGrid>
+          </CalendarWrap>
 
-          {/* 타임라인 */}
-          <TimelineList>
-            {DUMMY_SCHEDULE.map((item) => (
-              <TimelineRow key={item.id}>
-                <TimelineLeft>
-                  <NumberBadge>{item.id}</NumberBadge>
-                  <TimePill>{item.time}</TimePill>
-                </TimelineLeft>
-                <TimelineCard>
-                  <CardTopRow>
-                    <TimelineImage src={item.image} alt={item.name} />
-                    <TimelineInfo>
-                      <TimelineName>{item.name}</TimelineName>
-                      <TimelineLocation>{item.location}</TimelineLocation>
-                    </TimelineInfo>
-                    <TimelineActions>
-                      <ActionBtn><PinIcon /></ActionBtn>
-                      <ActionBtn><RefreshIcon /></ActionBtn>
-                    </TimelineActions>
-                  </CardTopRow>
-                  <TimelineDesc>{item.desc}</TimelineDesc>
-                </TimelineCard>
-              </TimelineRow>
-            ))}
-          </TimelineList>
-          <ScheduleFooterText>이 일정이 마음에 드시나요?</ScheduleFooterText>
-        </ScheduleSection>
+          <PlannerBox>
+            <PlannerContent
+              isGenerated={isTotalGenerated}
+              isConfirmed={isTotalConfirmed}
+              onConfirmedEdit={() => setIsTotalConfirmed(false)}
+              onGenerate={() => handleTotalGenerate(true)}
+              scheduleLabel="전체 여행"
+              recommends={recommends}
+              schedule={totalSchedule.length > 0 ? totalSchedule : (() => {
+                if (!totalStartDate || !totalEndDate) return [];
+                const days = [];
+                const cur = new Date(totalStartDate);
+                let i = 1;
+                while (cur <= totalEndDate) {
+                  const m = cur.getMonth() + 1;
+                  const d = cur.getDate();
+                  days.push({
+                    id: i,
+                    date: `${cur.getFullYear()}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+                    name: `${travel?.travel_region || ""} 관광`,
+                    subName: "",
+                    address: "",
+                    location: "관광",
+                    desc: "이날의 대략적인 일정을 생성해보세요.",
+                    stayTime: "하루 일정",
+                    image: `https://picsum.photos/400/200?random=${i + 100}`,
+                    lat: 35.1706,
+                    lng: 136.9067
+                  });
+                  cur.setDate(cur.getDate() + 1);
+                  i++;
+                }
+                return days;
+              })()}
+              aiInput={aiInput}
+              onAiChange={(e) => setAiInput(e.target.value)}
+              onAiSubmit={handleSubmitAi}
+              dayMode
+            />
+          </PlannerBox>
+        </>
       )}
 
-      <PlusButton aria-label="일정 추가">
-        <img src={PlusIcon} alt="일정 추가" width="24" height="24" />
-      </PlusButton>
+      {activeTab === "daily" && (
+        <>
+          <DateScroller ref={dateScrollerRef}>
+            {dates.map((item) => {
+              const isActive = selectedDateKey === item.key;
+              return (
+                <DateItem
+                  key={item.key}
+                  ref={item.isToday ? todayItemRef : null}
+                  $active={isActive}
+                  onClick={() => setSelectedDateKey(item.key)}
+                >
+                  <DateDay $active={isActive}>{item.day}</DateDay>
+                  <DateNum $active={isActive}>{item.date}</DateNum>
+                  {item.isToday && <TodayDot $active={isActive} />}
+                </DateItem>
+              );
+            })}
+          </DateScroller>
 
-      <GenerateButton onClick={handleGenerate}>
-        <GenerateText>{isGenerated ? "일정 확정하기" : "일정생성 요청하기"}</GenerateText>
-        <img src={RightArrow} alt="" style={{ width: 18, height: 18, filter: "brightness(0) invert(1)" }} />
-      </GenerateButton>
+          <TimeSelector>
+            <TimePickerWrapper $active={startTimeActive}>
+              <TimeDisplayText $active={startTimeActive}>
+                {formatDisplayTime(startTime)}
+              </TimeDisplayText>
+              <ChevronDown color={startTimeActive ? "#fff" : "#ff871e"} />
+              <StyledTimeInput
+                type="time"
+                value={startTime}
+                onFocus={() => setStartTimeActive(true)}
+                onBlur={() => setStartTimeActive(false)}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </TimePickerWrapper>
+
+            <TimeSeparator>—</TimeSeparator>
+
+            <TimePickerWrapper $active={endTimeActive}>
+              <TimeDisplayText $active={endTimeActive}>
+                {formatDisplayTime(endTime)}
+              </TimeDisplayText>
+              <ChevronDown color={endTimeActive ? "#fff" : "#ff871e"} />
+              <StyledTimeInput
+                type="time"
+                value={endTime}
+                onFocus={() => setEndTimeActive(true)}
+                onBlur={() => setEndTimeActive(false)}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </TimePickerWrapper>
+          </TimeSelector>
+
+          <PlannerBox>
+            <PlannerContent
+              isGenerated={isGenerated}
+              isConfirmed={isConfirmed}
+              onConfirmedEdit={handleConfirmedEdit}
+              onGenerate={() => handleGenerate(true)}
+              scheduleLabel={selectedDate ? `${selectedDate.month}월 ${selectedDate.date}일 ${selectedDate.day}요일` : "일정"}
+              recommends={recommends}
+              schedule={schedule}
+              aiInput={aiInput}
+              onAiChange={(e) => setAiInput(e.target.value)}
+              onAiSubmit={handleSubmitAi}
+            />
+          </PlannerBox>
+        </>
+      )}
 
       <BottomNav>
         <NavItem onClick={() => handleNavClick("/home")}>
@@ -373,6 +628,29 @@ export default function Plan() {
           <NavIcon><img src={TabUser} alt="마이페이지" /></NavIcon>
         </NavItem>
       </BottomNav>
+
+      <AddPlanModal 
+        isOpen={addModal} 
+        onClose={() => setAddModal(false)} 
+        dayMode={activeTab === "total"} 
+      />
+
+      <PlusButton aria-label="일정 추가" onClick={() => setAddModal(true)}>
+        <img src={PlusIcon} alt="일정 추가" width="24" height="24" />
+      </PlusButton>
+
+      {!isCurrentTabConfirmed && (
+        <GenerateButton onClick={currentGenerateHandler}>
+          <GenerateText>{isCurrentTabGenerated ? "일정 확정하기" : "일정생성 요청하기"}</GenerateText>
+          <img src={RightArrow} alt="" style={{ width: 18, height: 18, filter: "brightness(0) invert(1)" }} />
+        </GenerateButton>
+      )}
+
+      {isLoading && (
+        <LoadingOverlay 
+          message={isCurrentTabGenerated ? "일정을 저장하고 있어요..." : "AI가 최적의 일정을 짜고 있어요..."} 
+        />
+      )}
     </Screen>
   );
 }

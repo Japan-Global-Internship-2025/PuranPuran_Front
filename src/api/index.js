@@ -1,20 +1,23 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
-
-const token = () => localStorage.getItem("token") || "";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 const headers = () => ({
   "Content-Type": "application/json",
-  Authorization: `Bearer ${token()}`,
 });
 
 async function request(method, path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: headers(),
+    credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`);
-  return res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(`${method} ${path} → ${res.status}`);
+  }
+  console.log(`${method} ${path} → ${res.status}`);
+  const result = await res.json();
+  console.log("response data:", result);
+  return result && result.success ? result.data : result;
 }
 
 // ── Auth ──────────────────────────────────────────────
@@ -25,6 +28,7 @@ export const api = {
     getUser: () => request("GET", "/api/auth/user"),
     updateUser: (body) => request("PATCH", "/api/auth/user", body),
     deleteUser: () => request("DELETE", "/api/auth/user"),
+    getUsername: () => request("GET", `/api/auth/username`),
   },
 
   // ── Travel ───────────────────────────────────────────
@@ -34,6 +38,7 @@ export const api = {
     getOne: (id) => request("GET", `/api/travel/${id}`),
     update: (id, body) => request("PATCH", `/api/travel/${id}`, body),
     delete: (id) => request("DELETE", `/api/travel/${id}`),
+    recommendPlaces: (id) => request("GET", `/api/travel/${id}/recommendation`),
   },
 
   // ── Planner ──────────────────────────────────────────
@@ -63,9 +68,12 @@ export const api = {
     uploadReceipt: (formData) =>
       fetch(`${BASE_URL}/api/spending/receipt/upload`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token()}` },
+        credentials: "include",
         body: formData,
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) throw new Error(`POST /api/spending/receipt/upload → ${r.status}`);
+        return r.json();
+      }).then(res => res && res.success ? res.data : res),
   },
 
   // ── Exchange Rate ─────────────────────────────────────

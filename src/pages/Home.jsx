@@ -66,9 +66,8 @@ import {
   NavIconImg,
 } from "../styles/Home";
 
-
 import JapaneseModal from "../components/JapaneseModal";
-
+import { api } from "../api";
 
 import TabHome from "../assets/tab-home.svg";
 import TabCalendar from "../assets/tab-calendar.svg";
@@ -82,19 +81,9 @@ import sound from "../assets/uil_volume.svg";
 import LogoSvg from "../assets/logo1.svg";
 
 const DUMMY_DATA = {
-  user: { name: "MINJAE98" },
-  budget: { total: 10000000, usedPercent: 12, currency: "JPY" },
+  user: { name: "" },
+  budget: { total: "-------", usedPercent: 0, currency: "JPY" },
   exchange: { rate: 937.98, change: 1.2, trend: "up", baseTime: "00시 00분" },
-  schedules: [
-    { id: 1, time: "12:00", title: "나고야 오스상점가", tag: "shopping" },
-    { id: 2, time: "14:00", title: "야바톤 본점", tag: "meal" },
-    { id: 3, time: "14:00", title: "하브스 사카에", tag: "meal" },
-  ],
-  expenses: [
-    { id: 1, name: "Family mart", location: "편의점", amountKrw: -9551.18, amountYen: -1020 },
-    { id: 2, name: "Family mart", location: "편의점", amountKrw: -9551.18, amountYen: -1020 },
-    { id: 3, name: "Family mart", location: "편의점", amountKrw: -9551.18, amountYen: -1020 },
-  ],
   japanese: {
     category: "쇼핑 / 계산",
     text: "これはいくらですか？",
@@ -106,10 +95,16 @@ const DUMMY_DATA = {
 export default function Home() {
   const navigate = useNavigate();
 
-  // 일본어 오픈
+  const [user, setUser] = useState(null);
+  const [travel, setTravel] = useState(null);
+  const [exchange, setExchange] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [todaySchedule, setTodaySchedule] = useState([]);
+  const [totalSpending, setTotalSpending] = useState(0);
+  const [usedPercent, setUsedPercent] = useState(0);
+  const [isTravelDay, setIsTravelDay] = useState(false);
   const [isJapaneseModalOpen, setIsJapaneseModalOpen] = useState(false);
 
-  // 첫 진입 시 자동으로 모달 열기 (하루에 한 번만)
   useEffect(() => {
     const hasSeenToday = sessionStorage.getItem("seen_japanese_modal");
     if (!hasSeenToday) {
@@ -118,9 +113,97 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        if (!mounted) return;
+        setUser(u);
+
+        const travelId = u?.lastest_travel_id;
+
+        if (!travelId) {
+          alert("현재 여행 정보가 없습니다. 여행 시작 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+
+        try {
+          const ex = await api.exchangeRate.get();
+          if (mounted) setExchange(ex);
+        } catch (e) {
+          console.warn("exchangeRate failed", e);
+        }
+
+        try {
+          const travelData = await api.travel.getOne(travelId);
+          if (mounted) {
+            setTravel(travelData);
+
+            // 오늘이 여행 날짜인지 확인
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const startDate = new Date(travelData.travel_start_date);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(travelData.travel_end_date);
+            endDate.setHours(0, 0, 0, 0);
+
+            const travelDay = today >= startDate && today <= endDate;
+            setIsTravelDay(travelDay);
+
+            if (travelDay) {
+              const planners = await api.planner.getAll(travelId);
+              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+              const todayPlan = planners.find((p) => p.plan_date === todayStr);
+              if (todayPlan && mounted) {
+                setTodaySchedule(todayPlan.items || []);
+              }
+            }
+          }
+          if (!travelData && mounted) {
+            alert("현재 여행 정보를 불러올 수 없습니다. 여행 시작 페이지로 이동합니다.");
+            navigate("/travelstart");
+          }
+        } catch (e) {
+          console.warn("getCurrentTravel failed", e);
+        }
+
+        try {
+          const rec = await api.spending.getRecent(travelId);
+          if (mounted && Array.isArray(rec)) setExpenses(rec);
+        } catch (e) {
+          console.warn("spending recent failed", e);
+        }
+
+        try {
+          const total = await api.spending.getTotal(travelId);
+          if (mounted) {
+            setTotalSpending(total || 0);
+          }
+        } catch (e) {
+          console.warn("spending total failed", e);
+        }
+      } catch (err) {
+        console.warn("getUser failed", err);
+        navigate("/login");
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (travel?.travel_budget && totalSpending !== undefined) {
+      const percent = Math.min(100, Math.floor((totalSpending / travel.travel_budget) * 100));
+      setUsedPercent(percent);
+    }
+  }, [travel, totalSpending]);
+
   const formatExpense = (amount) =>
-    (amount < 0 ? "- " : "") +
-    Math.abs(amount).toLocaleString("ko-KR", { minimumFractionDigits: 2 }) +
+    (amount > 0 ? "- " : "") +
+    Math.abs(amount).toLocaleString("ko-KR", { minimumFractionDigits: 0 }) +
     " 원";
 
   const handleNavClick = (path) => navigate(path);
@@ -135,7 +218,7 @@ export default function Home() {
 
       <WelcomeSection>
         <UserName>
-          <NameOrange>{DUMMY_DATA.user.name}</NameOrange>
+          <NameOrange>{user?.user_id ?? DUMMY_DATA.user.name}</NameOrange>
           <NameBlack>님</NameBlack>
         </UserName>
         <WelcomeText>오늘 여행도 즐겁게!</WelcomeText>
@@ -143,15 +226,15 @@ export default function Home() {
         <BudgetCard>
           <BudgetLabel>전체 예산</BudgetLabel>
           <BudgetAmount>
-            ₩{DUMMY_DATA.budget.total.toLocaleString("ko-KR")}
+            ₩{(travel?.travel_budget ?? DUMMY_DATA.budget.total).toLocaleString("ko-KR")}
           </BudgetAmount>
           <BudgetNoticeWrapper>
             <BudgetBadge>
               <BudgeIcon src={ArrowDown} alt="" />
-              {DUMMY_DATA.budget.usedPercent}%
+              {usedPercent}%
             </BudgetBadge>
             <BudgetNotice>
-              기존 예산에서 {DUMMY_DATA.budget.usedPercent}% 사용
+              기존 예산에서 {usedPercent}% 사용
             </BudgetNotice>
           </BudgetNoticeWrapper>
         </BudgetCard>
@@ -161,74 +244,113 @@ export default function Home() {
         <ExchangeIcon>¥</ExchangeIcon>
         <ExchangeInfo>
           <ExchangeTime>
-            {DUMMY_DATA.exchange.baseTime} 기준 엔화환율
+            {exchange
+              ? `${new Date(exchange.time * 1000).toLocaleString().slice(6, -3)} 기준 엔화환율`
+              : "환율 불러오는 중..."}
           </ExchangeTime>
           <ExchangeRateRow>
-            <ExchangeRate>{DUMMY_DATA.exchange.rate.toFixed(2)}</ExchangeRate>
+            <ExchangeRate>
+              {exchange ? Number(exchange.now_rate).toFixed(2) : "..."}
+            </ExchangeRate>
             <ExchangeUnit>원</ExchangeUnit>
             <ExchangeUit>(100¥ 기준)</ExchangeUit>
           </ExchangeRateRow>
           <ExchangeCurrency>JPY/KRW</ExchangeCurrency>
         </ExchangeInfo>
-        <ExchangeChange trend={DUMMY_DATA.exchange.trend}>
-          ↗ {DUMMY_DATA.exchange.change}%
-          <span>어제보다 상승</span>
+        <ExchangeChange trend={exchange?.trend ?? DUMMY_DATA.exchange.trend}>
+          {exchange
+            ? exchange.rate_compare >= 0
+              ? `↗ ${exchange.rate_compare}%`
+              : `↘ ${Math.abs(exchange.rate_compare)}%`
+            : "..."}
+          <span>
+            {exchange
+              ? exchange.status === "+"
+                ? "어제보다 상승"
+                : "어제보다 하락"
+              : ""}
+          </span>
         </ExchangeChange>
       </ExchangeCard>
 
       <SectionHeader>
         <SectionTitle>오늘의 일정</SectionTitle>
-        <MoreButton>
+        <MoreButton onClick={() => navigate("/plan")}>
           <img src={ArrowRight} alt="더보기" />
         </MoreButton>
       </SectionHeader>
 
       <SectionCard>
-        <ScheduleList>
-          {DUMMY_DATA.schedules.map((schedule) => (
-            <ScheduleItem key={schedule.id}>
-              <ScheduleTime>{schedule.time}</ScheduleTime>
-              <ScheduleDot>
-                <img
-                  src={schedule.tag === "shopping" ? Ling2 : Ling1}
-                  alt={schedule.tag}
-                />
-              </ScheduleDot>
-              <ScheduleContent>
-                <ScheduleTitle>{schedule.title}</ScheduleTitle>
-                <ScheduleTag $tag={schedule.tag}>{schedule.tag}</ScheduleTag>
-              </ScheduleContent>
-            </ScheduleItem>
-          ))}
-        </ScheduleList>
+        {!isTravelDay ? (
+          <div style={{ padding: "20px", textAlign: "center", color: "#9a9a9a", fontSize: "14px" }}>
+            오늘은 여행 기간이 아닙니다.
+          </div>
+        ) : todaySchedule.length === 0 ? (
+          <div style={{ padding: "20px", textAlign: "center", color: "#9a9a9a", fontSize: "14px" }}>
+            오늘 등록된 일정이 없습니다.
+          </div>
+        ) : (
+          <ScheduleList>
+            {todaySchedule.map((item) => (
+              <ScheduleItem key={item.id}>
+                <ScheduleTime>{item.visit_time?.slice(0, 5)}</ScheduleTime>
+                <ScheduleDot>
+                  <img
+                    src={item.category?.includes("쇼핑") ? Ling2 : Ling1}
+                    alt={item.category}
+                  />
+                </ScheduleDot>
+                <ScheduleContent>
+                  <ScheduleTitle>{item.place_name}</ScheduleTitle>
+                  <ScheduleTag
+                    $tag={
+                      item.category?.includes("쇼핑")
+                        ? "shopping"
+                        : item.category?.includes("음식")
+                          ? "meal"
+                          : "other"
+                    }
+                  >
+                    {item.category}
+                  </ScheduleTag>
+                </ScheduleContent>
+              </ScheduleItem>
+            ))}
+          </ScheduleList>
+        )}
       </SectionCard>
 
       <SectionHeader>
         <SectionTitle>최근 지출</SectionTitle>
-        <MoreButton>
+        <MoreButton onClick={() => navigate("/count")}>
           <span>전체보기</span>
         </MoreButton>
       </SectionHeader>
 
       <SectionCard>
         <ExpenseList>
-          {DUMMY_DATA.expenses.map((expense) => (
-            <ExpenseItem key={expense.id}>
-              <ExpenseInfo>
-                <ExpenseName>{expense.name}</ExpenseName>
-                <ExpenseLocation>{expense.location}</ExpenseLocation>
-              </ExpenseInfo>
-              <ExpenseAmount>
-                {formatExpense(expense.amountKrw)}
-                <ExpenseYen>
-                  - {Math.abs(expense.amountYen).toLocaleString()} ¥
-                </ExpenseYen>
-              </ExpenseAmount>
-            </ExpenseItem>
-          ))}
+          {expenses.length > 0 ? (
+            expenses.map((expense, idx) => (
+              <ExpenseItem key={expense.id ?? idx}>
+                <ExpenseInfo>
+                  <ExpenseName>{expense.title ?? expense.store ?? "지출"}</ExpenseName>
+                  <ExpenseLocation>{expense.location ?? expense.category ?? ""}</ExpenseLocation>
+                </ExpenseInfo>
+                <ExpenseAmount>
+                  {formatExpense(expense.total_krw ?? expense.amount)}
+                  <ExpenseYen>
+                    - {Math.abs(expense.total_amount ?? expense.yen ?? 0).toLocaleString()} ¥
+                  </ExpenseYen>
+                </ExpenseAmount>
+              </ExpenseItem>
+            ))
+          ) : (
+            <div style={{ padding: "20px", textAlign: "center", color: "#9a9a9a", fontSize: "14px" }}>
+              최근 지출 내역이 없습니다.
+            </div>
+          )}
         </ExpenseList>
       </SectionCard>
-
 
       <JapaneseWrapper onClick={() => setIsJapaneseModalOpen(true)}>
         <JapaneseHeaderTexts>
@@ -239,11 +361,7 @@ export default function Home() {
         <JapaneseCard>
           <JapaneseCardHeader>
             <JapanesePill>{DUMMY_DATA.japanese.category}</JapanesePill>
-            <JapaneseSound
-              type="button"
-              aria-label="sound"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <JapaneseSound type="button" aria-label="sound" onClick={(e) => e.stopPropagation()}>
               <img src={sound} alt="발음 듣기" />
             </JapaneseSound>
           </JapaneseCardHeader>
@@ -268,14 +386,10 @@ export default function Home() {
         </NavItem>
       </BottomNav>
 
-      {/* 일본어 모달 */}
       <JapaneseModal
         open={isJapaneseModalOpen}
         onClose={() => setIsJapaneseModalOpen(false)}
         data={DUMMY_DATA.japanese}
-        // open={true}  
-        // onClose={() => {}} 
-        // data={DUMMY_DATA.japanese}
       />
     </Screen>
   );

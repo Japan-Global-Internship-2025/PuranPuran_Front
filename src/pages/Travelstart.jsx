@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api";
 import {
   Screen, Header, BackButton, HeaderTitle,
   Body, TopMessage, TopSub, TopTitle,
@@ -9,6 +10,7 @@ import {
   CalendarGrid, CalendarDayLabel, CalendarCell, CalendarDay,
   Divider,
   Footer, StartButton,
+  BudgetInputWrapper, BudgetCurrency, BudgetInput, BudgetUnit,
 } from "../styles/Travelstart";
 
 
@@ -42,12 +44,12 @@ const TRANSPORTS = [
 
 const WALK_DISTANCES = [
   { id: "any",  label: "상관 없음" },
-  { id: "10",   label: "10분 (약 0.8km)" },
-  { id: "20",   label: "20분 (약 1.5km)" },
-  { id: "30",   label: "30분 (약 2.3km)" },
-  { id: "40",   label: "40분 (약 3km)" },
-  { id: "50",   label: "50분 (약 3.8km)" },
-  { id: "60",   label: "60분 (약 4.5km)" },
+  { id: "10km",   label: "10분 (약 0.8km)" },
+  { id: "20km",   label: "20분 (약 1.5km)" },
+  { id: "30km",   label: "30분 (약 2.3km)" },
+  { id: "40km",   label: "40분 (약 3km)" },
+  { id: "50km",   label: "50분 (약 3.8km)" },
+  { id: "60km",   label: "60분 (약 4.5km)" },
 ];
 
 
@@ -76,11 +78,13 @@ export default function TravelStart() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [region, setRegion] = useState(null);           // 단일 
-  const [transports, setTransports] = useState([]);     // 다중 
-  const [walkDistances, setWalkDistances] = useState([]); // 다중
+  const [region, setRegion] = useState(null);
+  const [transports, setTransports] = useState([]);
+  const [walkDistances, setWalkDistances] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [budget, setBudget] = useState("");
+  const [budgetFocused, setBudgetFocused] = useState(false);
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-indexed
 
@@ -121,14 +125,28 @@ export default function TravelStart() {
   };
 
 
-  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0;
+  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0 && budget;
 
-  const handleStart = () => {
-    // 더미 
-    console.log("여행 정보:", { region, startDate, endDate, transports, walkDistances });
-    navigate("/home");
-
-    
+  const handleStart = async () => {
+    // 여행 생성 API 호출
+    try {
+      const body = {
+        travel_name: `${region} 여행`,
+        travel_region: region,
+        travel_start_date: new Date(startDate).toISOString(),
+        travel_end_date: new Date(endDate).toISOString(),
+        travel_budget: Number(budget) || 1000000,
+        transportation: transports,
+        walk_distance: walkDistances,
+        lodging_info: `${region}역 근처 호텔`,
+      };
+      // console.log("Creating travel with body:", body);
+      await api.travel.create(body);
+      navigate("/home");
+    } catch (err) {
+      console.warn("travel.create failed", err);
+      alert("여행 생성 중 오류가 발생했습니다. 입력 정보를 확인해주세요.");
+    }
   };
 
   /* ── 날짜 포맷 표시 ── */
@@ -291,6 +309,23 @@ export default function TravelStart() {
               </Chip>
             ))}
           </ChipGroup>
+        </Section>
+
+        {/* 예산 입력 */}
+        <Section>
+          <SectionTitle>전체 예산을 알려주세요</SectionTitle>
+          <BudgetInputWrapper $focused={budgetFocused}>
+            <BudgetCurrency>₩</BudgetCurrency>
+            <BudgetInput
+              type="number"
+              placeholder="0"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              onFocus={() => setBudgetFocused(true)}
+              onBlur={() => setBudgetFocused(false)}
+            />
+            <BudgetUnit>원</BudgetUnit>
+          </BudgetInputWrapper>
         </Section>
 
         <Footer>

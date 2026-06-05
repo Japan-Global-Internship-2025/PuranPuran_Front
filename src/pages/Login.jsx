@@ -1,13 +1,28 @@
 import {Screen, Header, HeaderTitle, Body, Welcome, WelcomeTitle, WelcomeSub, Form, Field, Label, Input, ButtonWrap, PrimaryButton} from "../styles/auth";
 import { LinkButton } from "../styles/Login";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { api } from "../api";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const onLogin = (e) => {
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+
+  const onLogin = async (e) => {
+    if (!userId || !password) {
+      alert("아이디와 비밀번호를 모두 입력하세요.");
+      return;
+    }
     e.preventDefault();
-    // 로그인 로직
+    try {
+      await api.auth.login({ user_id: userId, user_pw: password });
+      navigate("/home");
+    } catch (err) {
+      console.error(err);
+      alert("로그인에 실패했습니다. 입력 정보를 확인하세요.");
+    }
   };
 
   return (
@@ -29,6 +44,8 @@ export default function Login() {
               type="text"
               placeholder="아이디를 입력하세요."
               autoComplete="username"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
             />
           </Field>
 
@@ -38,6 +55,8 @@ export default function Login() {
               type="password"
               placeholder="비밀번호를 입력하세요."
               autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </Field>
 

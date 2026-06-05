@@ -2,8 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { api } from "../api";
-
-const TRAVEL_ID = 1;
+import LogoSvg from "../assets/logo1.svg";
 
 const CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
 const PAYMENT_METHODS = ["현금", "카드"];
@@ -18,6 +17,7 @@ export default function Camera() {
   const [step, setStep] = useState("camera"); // "camera" | "confirm" | "edit" | "done"
   const [uploading, setUploading] = useState(false);
   const [parsed, setParsed] = useState(null);
+  const [travelId, setTravelId] = useState(null);
   const [form, setForm] = useState({
     title: "", location: "", total_amount: "",
     date: new Date().toISOString().split("T")[0],
@@ -26,6 +26,23 @@ export default function Camera() {
   const [cameraError, setCameraError] = useState(false);
 
   useEffect(() => {
+    // 사용자 정보 로딩하여 travelId 가져오기
+    (async () => {
+      try {
+        const u = await api.auth.getUser();
+        const tId = u?.lastest_travel_id;
+        if (!tId) {
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
+          navigate("/travelstart");
+          return;
+        }
+        setTravelId(tId);
+      } catch (err) {
+        console.warn("getUser failed in camera page", err);
+        navigate("/login");
+      }
+    })();
+    
     startCamera();
     return () => stopCamera();
   }, []);
@@ -80,15 +97,21 @@ export default function Camera() {
       formData.append("file", blob, "receipt.jpg");
       const result = await api.spending.uploadReceipt(formData);
       setParsed(result);
+      
+      const paymentMethodHandled = result?.payment_method === "CARD" ? "카드" : "현금";
       setForm(prev => ({
         ...prev,
-        title: result?.title || "",
+        title: result?.title || "영수증 내역",
         total_amount: result?.total_amount || "",
         category: result?.category || "식비",
+        location: result?.location || "",
+        payment_method: paymentMethodHandled,
+        date: result?.date ? result.date.split("T")[0] : prev.date
       }));
-    } catch {
-      // API 미연결 시 더미 파싱 결과
-      setForm(prev => ({ ...prev, title: "영수증 내역", total_amount: "1200" }));
+    } catch (err) {
+      console.warn("AI analyze failed", err);
+      // 에러 시 기본값
+      setForm(prev => ({ ...prev, title: "영수증 내역", total_amount: "1200", payment_method: "현금" }));
     } finally {
       setUploading(false);
       setStep("edit");
@@ -97,12 +120,19 @@ export default function Camera() {
 
   const handleSave = async () => {
     try {
-      await api.spending.createReceipt(TRAVEL_ID, {
-        ...form,
+      const paymentMethodMapped = form.payment_method === "카드" ? "CARD" : "CASH";
+      const body = {
+        title: form.title,
+        location: form.location || form.category,
         total_amount: Number(form.total_amount),
-      });
-    } catch {
-      // API 미연결 시 무시
+        date: new Date(form.date).toISOString(),
+        currency: form.currency,
+        payment_method: paymentMethodMapped,
+        category: form.category,
+      };
+      await api.spending.createReceipt(travelId, body);
+    } catch (err) {
+      console.error("save receipt failed", err);
     }
     setStep("done");
   };
@@ -197,11 +227,13 @@ export default function Camera() {
 
   return (
     <Screen>
-      <CameraHeader>
-        <BackBtn onClick={() => navigate("/count")}>←</BackBtn>
-        <CameraTitle>영수증 촬영</CameraTitle>
-        <GalleryBtn onClick={() => fileInputRef.current?.click()}>갤러리</GalleryBtn>
-      </CameraHeader>
+      <OrangeHeader>
+        <LogoImg src={LogoSvg} alt="PURAN PURAN" />
+      </OrangeHeader>
+
+      <DarkNav>
+        <BackBtn onClick={() => navigate("/count")}>‹</BackBtn>
+      </DarkNav>
 
       <ViewfinderContainer>
         {cameraError ? (
@@ -216,7 +248,6 @@ export default function Camera() {
             <Video ref={videoRef} autoPlay playsInline muted />
             <ViewfinderOverlay>
               <ViewfinderFrame />
-              <ViewfinderHint>영수증을 프레임 안에 맞춰주세요</ViewfinderHint>
             </ViewfinderOverlay>
           </>
         )}
@@ -231,13 +262,15 @@ export default function Camera() {
           style={{ display: "none" }}
           onChange={handleGallery}
         />
-        <GalleryIconBtn onClick={() => fileInputRef.current?.click()}>
-          <span style={{ fontSize: 20 }}>🖼</span>
-        </GalleryIconBtn>
+        <GalleryIconBtn onClick={() => fileInputRef.current?.click()} />
         <ShutterBtn onClick={takePhoto} disabled={cameraError}>
           <ShutterInner />
         </ShutterBtn>
-        <div style={{ width: 56 }} />
+        <FlashBtn>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="white" />
+          </svg>
+        </FlashBtn>
       </CameraControls>
     </Screen>
   );
@@ -248,7 +281,7 @@ const Screen = styled.div`
   width: 100%;
   max-width: 480px;
   min-height: 100dvh;
-  background: #111;
+  background: #3a3a3a;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -256,51 +289,48 @@ const Screen = styled.div`
   overflow: hidden;
 `;
 
-const CameraHeader = styled.div`
+const OrangeHeader = styled.header`
+  height: 60px;
+  background: #ff871e;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: #111;
-  z-index: 10;
+  padding: 0 20px;
+  flex-shrink: 0;
 `;
 
-const CameraTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+const LogoImg = styled.img`
+  height: 28px;
+  display: block;
+`;
+
+const DarkNav = styled.div`
+  padding: 10px 16px 4px;
+  background: #3a3a3a;
 `;
 
 const BackBtn = styled.button`
   background: none;
   border: none;
   color: #fff;
-  font-size: 22px;
+  font-size: 28px;
   cursor: pointer;
-  padding: 4px;
-  width: 40px;
-  text-align: left;
-`;
-
-const GalleryBtn = styled.button`
-  background: none;
-  border: none;
-  color: #ff871e;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
 `;
 
 const ViewfinderContainer = styled.div`
   flex: 1;
   position: relative;
-  background: #000;
+  background: #3a3a3a;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 12px 32px;
 `;
 
 const Video = styled.video`
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -312,67 +342,68 @@ const ViewfinderOverlay = styled.div`
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
 `;
 
 const ViewfinderFrame = styled.div`
-  width: 280px;
-  height: 200px;
-  border: 2px solid rgba(255,255,255,0.8);
-  border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
-`;
-
-const ViewfinderHint = styled.div`
-  color: rgba(255,255,255,0.8);
-  font-size: 13px;
-  font-weight: 500;
+  width: 72%;
+  aspect-ratio: 0.63;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 20px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
 `;
 
 const CameraControls = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 40px 40px;
-  background: #111;
+  padding: 28px 48px 44px;
+  background: #3a3a3a;
+  flex-shrink: 0;
 `;
 
 const GalleryIconBtn = styled.button`
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.28);
   border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 `;
 
 const ShutterBtn = styled.button`
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.9);
-  border: 4px solid rgba(255,255,255,0.4);
+  background: transparent;
+  border: 4px solid #ff871e;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+  padding: 0;
   transition: transform 0.15s;
   &:active { transform: scale(0.93); }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 `;
 
 const ShutterInner = styled.div`
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #ff871e;
+`;
+
+const FlashBtn = styled.button`
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  background: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const CameraErrorBox = styled.div`

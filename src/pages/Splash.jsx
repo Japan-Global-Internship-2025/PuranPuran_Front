@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import logoImg from '../assets/logo.svg';
 import styled, { keyframes } from 'styled-components';
 
@@ -25,8 +26,13 @@ function Splash() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/login');  // 2초 후 로그인으로 이동
+    const timer = setTimeout(async () => {
+      try {
+        await api.auth.getUser();
+        navigate('/home');
+      } catch {
+        navigate('/login');
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
