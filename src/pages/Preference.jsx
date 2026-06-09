@@ -25,15 +25,15 @@ import {
   SkipFooterButton,
 } from "../styles/Preference";
 
-import p1 from "../assets/p1.svg";
-import p2 from "../assets/p2.svg";
-import p3 from "../assets/p3.svg";
-import p4 from "../assets/p4.svg";
-import p5 from "../assets/p5.svg";
-import p6 from "../assets/p6.svg";
-import p7 from "../assets/p7.svg";
-import p8 from "../assets/p8.svg";
-import p9 from "../assets/p9.svg";
+import p1 from "../assets/images/p1.svg";
+import p2 from "../assets/images/p2.svg";
+import p3 from "../assets/images/p3.svg";
+import p4 from "../assets/images/p4.svg";
+import p5 from "../assets/images/p5.svg";
+import p6 from "../assets/images/p6.svg";
+import p7 from "../assets/images/p7.svg";
+import p8 from "../assets/images/p8.svg";
+import p9 from "../assets/images/p9.svg";
 
 const MAX_TASTE = 3;
 
