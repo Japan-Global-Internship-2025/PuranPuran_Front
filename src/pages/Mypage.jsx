@@ -18,16 +18,10 @@ import {
   MenuTitle,
   ArrowIcon,
   LogoutButton,
-  BottomNav,
-  NavItem,
-  NavIcon,
 } from "../styles/Mypage";
 import { api } from "../api";
+import BottomNavigation from "../components/BottomNavigation";
 
-import TabHome from "../assets/tab-home.svg";
-import TabCalendar from "../assets/tab-calendar.svg";
-import TabCamera from "../assets/tab-camera.svg";
-import TabUser from "../assets/tab-user.svg";
 
 const DUMMY_USER = {
   nickname: "MINJAE98",
@@ -41,7 +35,7 @@ const DUMMY_TRAVELS = [
     destination: "일본 오사카",
     startDate: "2025.12.21",
     endDate: "2025.12.27",
-    image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&q=80",
+    image: "https://picsum.photos/500/300?random=1",
     isActive: false,
   },
   {
@@ -49,7 +43,7 @@ const DUMMY_TRAVELS = [
     destination: "일본 도쿄",
     startDate: "2024.02.03",
     endDate: "2024.02.07",
-    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=500&q=80",
+    image: "https://picsum.photos/500/300?random=2",
     isActive: false,
   },
 ];
@@ -109,14 +103,29 @@ export default function MyPage() {
 
   const activeTravel = travels.find((t) => t.isActive) || travels[0];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch (err) {
+      console.warn("logout api failed", err);
+    }
     navigate("/login");
   };
 
-  const handleEditToggle = () => {
+  const handleEditToggle = async () => {
     if (isEditMode) {
-      if (editNickname.trim()) {
-        setUser((prev) => ({ ...prev, nickname: editNickname.trim() }));
+      if (editNickname.trim() && editNickname !== user.nickname) {
+        try {
+          await api.auth.updateUser({ user_id: editNickname.trim() });
+          setUser((prev) => ({ ...prev, nickname: editNickname.trim() }));
+        } catch (err) {
+          console.error("Failed to update nickname:", err);
+          if (err.message.includes("409")) {
+            alert("이미 존재하는 아이디입니다.");
+          } else {
+            alert("닉네임 수정에 실패했습니다.");
+          }
+        }
       }
       setIsEditMode(false);
     } else {
@@ -133,11 +142,36 @@ export default function MyPage() {
     }
   };
 
+  const handleDeleteTravel = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm("정말로 이 여행 기록을 삭제하시겠습니까?")) {
+      try {
+        await api.travel.delete(id);
+        setTravels((prev) => prev.filter((t) => t.id !== id));
+        alert("여행 기록이 삭제되었습니다.");
+      } catch (err) {
+        console.error("Failed to delete travel:", err);
+        alert("여행 삭제에 실패했습니다.");
+      }
+    }
+  };
+
+  const handleSelectTravel = async (id) => {
+    try {
+      await api.auth.updateUser({ lastest_travel_id: id });
+      alert("여행이 변경되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to select travel:", err);
+      alert("여행 변경에 실패했습니다.");
+    }
+  };
+
   return (
     <Screen>
       <Header>
         <ProfileSection>
-          {isEditMode ? (
+          {/* {isEditMode ? (
             <AvatarWrapper>
               <Avatar src={user.profileImage} alt="프로필" />
               <AvatarAddBtn onClick={() => fileInputRef.current?.click()}>+</AvatarAddBtn>
@@ -149,14 +183,14 @@ export default function MyPage() {
                 onChange={handlePhotoChange}
               />
             </AvatarWrapper>
-          ) : (
+          ) : ( */}
             <DefaultAvatar>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="8" r="4" fill="rgba(255,255,255,0.6)" />
                 <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="rgba(255,255,255,0.6)" />
               </svg>
             </DefaultAvatar>
-          )}
+          {/* )} */}
 
           <ProfileInfo>
             <UserNameRow>
@@ -192,7 +226,7 @@ export default function MyPage() {
 
       <MenuList>
         {/* 새 여행 만들기 */}
-        <MenuItem onClick={() => navigate("/travelstart")}>
+        <MenuItem onClick={() => navigate("/travelstart", { state: { from: "mypage" } })}>
           <MenuIcon>✈️</MenuIcon>
           <MenuContent>
             <MenuSub>새로운 추억을 만들러 가볼까요?</MenuSub>
@@ -202,7 +236,7 @@ export default function MyPage() {
         </MenuItem>
 
         {/* 취향 설정 */}
-        <MenuItem onClick={() => navigate("/preference")}>
+        <MenuItem onClick={() => navigate("/preference", { state: { from: "mypage" } })}>
           <MenuIcon>🌸</MenuIcon>
           <MenuContent>
             <MenuSub>취향에 따라 추천이 바뀌어요</MenuSub>
@@ -212,51 +246,46 @@ export default function MyPage() {
         </MenuItem>
 
         {/* 여행 기록 */}
-        <MenuItem isOpen={isRecordOpen} onClick={() => setIsRecordOpen(!isRecordOpen)}>
-          <MenuIcon>☁️</MenuIcon>
-          <MenuContent>
-            <MenuSub>지금까지의 여행을 살펴보세요</MenuSub>
-            <MenuTitle>여행기록 보기</MenuTitle>
-          </MenuContent>
-          <ArrowIcon isOpen={isRecordOpen}>⌄</ArrowIcon>
-        </MenuItem>
+        <div>
+          <MenuItem isOpen={isRecordOpen} onClick={() => setIsRecordOpen(!isRecordOpen)}>
+            <MenuIcon>☁️</MenuIcon>
+            <MenuContent>
+              <MenuSub>지금까지의 여행을 살펴보세요</MenuSub>
+              <MenuTitle>여행기록 보기</MenuTitle>
+            </MenuContent>
+            <ArrowIcon isOpen={isRecordOpen}>⌄</ArrowIcon>
+          </MenuItem>
 
-        {isRecordOpen && (
-          <TravelImageList>
-            {travels.map((t) => (
-              <TravelImageCard
-                key={t.id}
-                $image={t.image}
-                onClick={() => navigate("/plan")}
-              >
-                <TravelImageOverlay>
-                  <TravelImageDate>
-                    {t.startDate} - {t.endDate}
-                  </TravelImageDate>
-                  <TravelImageName>{t.destination ?? t.name}</TravelImageName>
-                </TravelImageOverlay>
-              </TravelImageCard>
-            ))}
-          </TravelImageList>
-        )}
+          {isRecordOpen && (
+            <TravelImageList>
+              {travels.map((t) => (
+                <TravelImageCard
+                  key={t.id}
+                  $image={t.image}
+                  onClick={() => handleSelectTravel(t.id)}
+                >
+                  <TravelDeleteBtn onClick={(e) => handleDeleteTravel(e, t.id)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </TravelDeleteBtn>
+                  <TravelImageOverlay>
+                    <TravelImageDate>
+                      {t.startDate} - {t.endDate}
+                    </TravelImageDate>
+                    <TravelImageName>{t.destination ?? t.name}</TravelImageName>
+                  </TravelImageOverlay>
+                </TravelImageCard>
+              ))}
+            </TravelImageList>
+          )}
+        </div>
+
       </MenuList>
 
       <LogoutButton onClick={handleLogout}>로그아웃하기</LogoutButton>
 
-      <BottomNav>
-        <NavItem onClick={() => navigate("/home")}>
-          <NavIcon><img src={TabHome} alt="홈" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => navigate("/plan")}>
-          <NavIcon><img src={TabCalendar} alt="일정" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => navigate("/count")}>
-          <NavIcon><img src={TabCamera} alt="가계부" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => navigate("/mypage")}>
-          <NavIcon $active><img src={TabUser} alt="마이페이지" /></NavIcon>
-        </NavItem>
-      </BottomNav>
+      <BottomNavigation />
     </Screen>
   );
 }
@@ -357,4 +386,25 @@ const TravelImageName = styled.div`
   font-size: 18px;
   font-weight: 700;
   color: #fff;
+`;
+
+const TravelDeleteBtn = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s;
+  &:hover {
+    background: rgba(255, 59, 48, 0.8);
+    transform: scale(1.1);
+  }
 `;

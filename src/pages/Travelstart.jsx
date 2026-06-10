@@ -75,6 +75,7 @@ function isInRange(date, start, end) {
 
 export default function TravelStart() {
   const navigate = useNavigate();
+  const from = location.state?.from;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -84,7 +85,11 @@ export default function TravelStart() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [budget, setBudget] = useState("");
+  const [lodging, setLodging] = useState("");
+  const [travelName, setTravelName] = useState("");
   const [budgetFocused, setBudgetFocused] = useState(false);
+  const [lodgingFocused, setLodgingFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-indexed
 
@@ -125,20 +130,20 @@ export default function TravelStart() {
   };
 
 
-  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0 && budget;
+  const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0 && budget && lodging;
 
   const handleStart = async () => {
-    // 여행 생성 API 호출
+
     try {
       const body = {
-        travel_name: `${region} 여행`,
+        travel_name: travelName || null,
         travel_region: region,
         travel_start_date: new Date(startDate).toISOString(),
         travel_end_date: new Date(endDate).toISOString(),
         travel_budget: Number(budget) || 1000000,
         transportation: transports,
         walk_distance: walkDistances,
-        lodging_info: `${region}역 근처 호텔`,
+        lodging_info: lodging,
       };
       // console.log("Creating travel with body:", body);
       await api.travel.create(body);
@@ -167,7 +172,9 @@ export default function TravelStart() {
       <Body>
         {/* 상단 메시지 */}
         <TopMessage>
-          <TopSub>거의 다 왔어요</TopSub>
+          {from === "mypage" && (
+            <TopSub>거의 다 왔어요</TopSub>
+          )}
           <TopTitle>
             <span>PuranPuran</span>과 함께 할 여행일정을 알려주세요!
           </TopTitle>
@@ -311,6 +318,21 @@ export default function TravelStart() {
           </ChipGroup>
         </Section>
 
+        {/* 여행 이름 입력 */}
+        <Section>
+          <SectionTitle>여행 이름을 지어주세요</SectionTitle>
+          <BudgetInputWrapper $focused={nameFocused}>
+            <BudgetInput
+              type="text"
+              placeholder="ex) 2026 일본 여행"
+              value={travelName}
+              onChange={(e) => setTravelName(e.target.value)}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+            />
+          </BudgetInputWrapper>
+        </Section>
+
         {/* 예산 입력 */}
         <Section>
           <SectionTitle>전체 예산을 알려주세요</SectionTitle>
@@ -325,6 +347,21 @@ export default function TravelStart() {
               onBlur={() => setBudgetFocused(false)}
             />
             <BudgetUnit>원</BudgetUnit>
+          </BudgetInputWrapper>
+        </Section>
+
+        {/* 숙소 정보 입력 */}
+        <Section>
+          <SectionTitle>숙소 위치를 알려주세요</SectionTitle>
+          <BudgetInputWrapper $focused={lodgingFocused}>
+            <BudgetInput
+              type="text"
+              placeholder="ex) 신주쿠역 근처"
+              value={lodging}
+              onChange={(e) => setLodging(e.target.value)}
+              onFocus={() => setLodgingFocused(true)}
+              onBlur={() => setLodgingFocused(false)}
+            />
           </BudgetInputWrapper>
         </Section>
 

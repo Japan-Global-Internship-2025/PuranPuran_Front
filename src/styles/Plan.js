@@ -852,6 +852,7 @@ export const AddModalInput = styled.input`
   border: none;
   border-radius: 10px;
   font-size: 14px;
+  font-family: inherit;
   color: #333;
   outline: none;
   box-sizing: border-box;
@@ -866,6 +867,7 @@ export const AddModalSelect = styled.select`
   border: none;
   border-radius: 10px;
   font-size: 14px;
+  font-family: inherit;
   color: #333;
   outline: none;
   appearance: none;
