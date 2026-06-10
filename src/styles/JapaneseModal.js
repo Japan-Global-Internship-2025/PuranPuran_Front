@@ -20,6 +20,7 @@ export const Overlay = styled.div`
 
 
 export const ModalCard = styled.div`
+  position: relative;
   width: 100%;
   max-width: 360px;
   background: #fff;
@@ -81,6 +82,22 @@ export const SoundButton = styled.button`
     height: 28px;
     color: #bfbcbc;
     display: block;
+  }
+`;
+
+export const RefreshButton = styled.button`
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: transform 0.3s ease;
+
+  &:active {
+    transform: rotate(180deg);
   }
 `;
 

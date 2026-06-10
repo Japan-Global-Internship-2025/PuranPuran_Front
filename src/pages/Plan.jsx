@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../api";
+// import { getTravelWithFallback } from "../utils/travel";
 import PlannerContent from "../components/PlannerContent";
+import BottomNavigation from "../components/BottomNavigation";
 import AddPlanModal from "../components/AddPlanModal";
 import LoadingOverlay from "../components/LoadingOverlay";
 import {
@@ -23,9 +25,6 @@ import {
   PlusButton,
   GenerateButton,
   GenerateText,
-  BottomNav,
-  NavItem,
-  NavIcon,
 } from "../styles/Plan";
 
 import {
@@ -39,10 +38,6 @@ import {
   CalendarDay,
 } from "../styles/Travelstart";
 
-import TabHome from "../assets/tab-home.svg";
-import TabCalendar from "../assets/tab-calendar.svg";
-import TabCamera from "../assets/tab-camera.svg";
-import TabUser from "../assets/tab-user.svg";
 import PlusIcon from "../assets/plus2.svg";
 import RightArrow from "../assets/uiw_right.svg";
 
@@ -88,6 +83,7 @@ const ChevronDown = ({ color = "#fff" }) => (
 
 export default function Plan() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dateScrollerRef = useRef(null);
   const todayItemRef = useRef(null);
 
@@ -122,6 +118,8 @@ export default function Plan() {
 
   const [addModal, setAddModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const scheduleBackupRef = useRef([]);
 
   const totalFirstDay = new Date(calYear, calMonth, 1).getDay();
   const totalDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -140,8 +138,6 @@ export default function Plan() {
 
   const selectedDate = dates.find((d) => d.key === selectedDateKey);
 
-  const handleNavClick = (path) => navigate(path);
-
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -159,7 +155,7 @@ export default function Plan() {
         setTravelId(tId);
 
         const travelData = await api.travel.getOne(tId);
-        if (!mounted) return;
+        if (!mounted || !travelData) return;
         setTravel(travelData);
 
         if (travelData.travel_start_date && travelData.travel_end_date) {
@@ -169,7 +165,11 @@ export default function Plan() {
           );
           setDates(generated);
           if (generated.length > 0) {
-            setSelectedDateKey(generated[0].key);
+            const navDate = location.state?.selectedDate;
+            const navTab = location.state?.tab;
+            const matchedDate = navDate && generated.find((d) => d.key === navDate);
+            setSelectedDateKey(matchedDate ? navDate : generated[0].key);
+            if (navTab) setActiveTab(navTab);
           }
           setTotalStartDate(new Date(travelData.travel_start_date));
           setTotalEndDate(new Date(travelData.travel_end_date));
@@ -204,6 +204,13 @@ export default function Plan() {
     try {
       const planners = await api.planner.getAll(tId);
       setAllPlanners(planners || []);
+      
+      // 만약 플래너 정보가 하나도 없다면 '총 여행 플래너' 탭으로 강제 이동
+      if (!planners || planners.length === 0) {
+        setActiveTab("total");
+        alert("총 여행 플래너 정보가 없습니다. 먼저 전체 일정 요약을 생성해주세요.");
+      }
+      
       return planners;
     } catch (err) {
       console.warn("getAll planners failed", err);
@@ -212,30 +219,27 @@ export default function Plan() {
   };
 
   useEffect(() => {
-    if (allPlanners.length > 0) {
-      // 여행 기간에 해당하는 DailyPlanner들만 모아서 totalSchedule로 변환
-      const mapped = allPlanners
-        .sort((a, b) => new Date(a.plan_date) - new Date(b.plan_date))
-        .map((plan, index) => ({
-          id: index + 1,
-          date: plan.plan_date,
-          name: plan.place || "여행지",
-          subName: plan.category || "",
-          address: "",
-          location: plan.category || "관광",
-          desc: plan.daily_description || plan.ai_request || "저장된 일정",
-          stayTime: "하루 일정",
-          image: `https://picsum.photos/400/200?random=${index + 100}`,
-          lat: 35.1706,
-          lng: 136.9067
-        }));
-      
-      if (mapped.length > 0) {
-        setTotalSchedule(mapped);
-        setIsTotalGenerated(true);
-        setIsTotalConfirmed(true);
-      }
-    }
+    if (allPlanners.length === 0) return;
+
+    const mapped = allPlanners
+      .sort((a, b) => new Date(a.plan_date) - new Date(b.plan_date))
+      .map((plan, index) => ({
+        id: index + 1,
+        date: plan.plan_date,
+        name: plan.place || "여행지",
+        subName: plan.category || "",
+        address: "",
+        location: plan.category || "관광",
+        desc: plan.daily_description || plan.ai_request || "저장된 일정",
+        stayTime: "하루 일정",
+        image: `https://picsum.photos/400/200?random=${index + 100}`,
+        lat: Number(plan.latitude) || 35.1706,
+        lng: Number(plan.longitude) || 136.9067,
+      }));
+
+    setTotalSchedule(mapped);
+    setIsTotalGenerated(true);
+    setIsTotalConfirmed(true);
   }, [allPlanners]);
 
   useEffect(() => {
@@ -248,25 +252,30 @@ export default function Plan() {
       return;
     }
 
+    setIsEditMode(false);
+
     const matchedPlanner = allPlanners.find(
       (p) => p.plan_date === selectedDateKey
     );
 
     if (matchedPlanner) {
       const hasItems = Array.isArray(matchedPlanner.items) && matchedPlanner.items.length > 0;
-      const mapped = (matchedPlanner.items || []).map((item) => ({
-        id: item.id || item.sequence,
-        time: item.visit_time,
-        name: item.place_name,
-        subName: item.location || "",
-        address: item.location || "",
-        location: item.category,
-        desc: item.description,
-        stayTime: "약 1시간",
-        image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
-        lat: Number(item.latitude) || 35.1706,
-        lng: Number(item.longitude) || 136.9067,
-      })).sort((a, b) => a.id - b.id);
+      const mapped = (matchedPlanner.items || [])
+        .sort((a, b) => a.visit_time.localeCompare(b.visit_time))
+        .map((item, index) => ({
+          id: index + 1,
+          originalId: item.id,
+          time: (item.visit_time || "12:00").slice(0, 5),
+          name: item.place_name,
+          subName: item.location || "",
+          address: item.location || "",
+          location: item.category,
+          desc: item.description,
+          stayTime: "약 1시간",
+          image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
+          lat: Number(item.latitude) || 35.1706,
+          lng: Number(item.longitude) || 136.9067,
+        }));
 
       setSchedule(mapped);
       setCurrentPlace(matchedPlanner.place || "");
@@ -294,6 +303,12 @@ export default function Plan() {
   };
 
   const handleGenerate = async (forceRegenerate = false) => {
+    if (!isTotalConfirmed) {
+      setActiveTab("total");
+      alert("총 여행 플래너가 확정되지 않았습니다. 먼저 전체 일정 요약을 생성하고 확정해주세요.");
+      return;
+    }
+
     if (isGenerated && !forceRegenerate) {
       await handleConfirmSave();
     } else {
@@ -308,19 +323,22 @@ export default function Plan() {
         const response = await api.planner.generate(travelId, body);
         
         if (response && response.items) {
-          const mapped = response.items.map((item) => ({
-            id: item.id || item.sequence,
-            time: item.visit_time,
-            name: item.place_name,
-            subName: item.location || "",
-            address: item.location || "",
-            location: item.category,
-            desc: item.description,
-            stayTime: "약 1시간",
-            image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
-            lat: Number(item.latitude) || 35.1706,
-            lng: Number(item.longitude) || 136.9067,
-          })).sort((a, b) => a.id - b.id);
+          const mapped = response.items
+            .sort((a, b) => a.visit_time.localeCompare(b.visit_time))
+            .map((item, index) => ({
+              id: index + 1,
+              originalId: item.id || item.sequence,
+              time: (item.visit_time || "12:00").slice(0, 5),
+              name: item.place_name,
+              subName: item.location || "",
+              address: item.location || "",
+              location: item.category,
+              desc: item.description,
+              stayTime: "약 1시간",
+              image: item.image_url || `https://picsum.photos/400/200?random=${item.id}`,
+              lat: Number(item.latitude) || 35.1706,
+              lng: Number(item.longitude) || 136.9067,
+            }));
 
           setSchedule(mapped);
           setCurrentPlace(response.place || "여행지");
@@ -332,7 +350,11 @@ export default function Plan() {
         }
       } catch (err) {
         console.error("generate daily plan failed", err);
-        alert("일정 생성 중 오류가 발생했습니다.");
+        if (err.message.includes("400")) {
+            alert("먼저 총 여행 플래너를 생성하고 확정해야 합니다.");
+        } else {
+            alert("일정 생성 중 오류가 발생했습니다.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -394,8 +416,8 @@ export default function Plan() {
             desc: plan.daily_description || "",
             stayTime: "하루 일정",
             image: `https://picsum.photos/400/200?random=${index + 100}`,
-            lat: 35.1706,
-            lng: 136.9067
+            lat: Number(plan.latitude) || 35.1706,
+            lng: Number(plan.longitude) || 136.9067,
           }));
           setTotalSchedule(mapped);
           setIsTotalGenerated(true);
@@ -420,7 +442,9 @@ export default function Plan() {
           plan_date: item.date,
           place: item.name,
           category: item.location,
-          daily_description: item.desc
+          daily_description: item.desc,
+          latitude: item.lat,
+          longitude: item.lng,
         }))
       };
       await api.planner.totalSave(travelId, body);
@@ -437,6 +461,51 @@ export default function Plan() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEditToggle = () => {
+    if (!isEditMode) {
+      scheduleBackupRef.current = schedule.map(item => ({ ...item }));
+      setIsEditMode(true);
+    } else {
+      setSchedule(scheduleBackupRef.current);
+      setIsEditMode(false);
+    }
+  };
+
+  const handleDeleteItem = (itemId) => {
+    setSchedule(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const handleUpdateItem = (itemId, updates) => {
+    setSchedule(prev => prev.map(item =>
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+  };
+
+  const handleAddItem = (newItem) => {
+    const maxId = schedule.length > 0 ? Math.max(...schedule.map(s => s.id)) : 0;
+    setSchedule(prev => [
+      ...prev,
+      {
+        id: maxId + 1,
+        name: newItem.name,
+        time: newItem.time || "12:00",
+        location: newItem.category || "기타",
+        desc: newItem.desc || "",
+        subName: "",
+        address: "",
+        stayTime: "약 1시간",
+        image: `https://picsum.photos/400/200?random=${maxId + 200}`,
+        lat: newItem.lat ?? 35.1706,
+        lng: newItem.lng ?? 136.9067,
+      }
+    ]);
+  };
+
+  const handleSaveEdits = async () => {
+    setIsEditMode(false);
+    await handleConfirmSave();
   };
 
   const isCurrentTabConfirmed = activeTab === "daily" ? isConfirmed : isTotalConfirmed;
@@ -510,6 +579,7 @@ export default function Plan() {
               onGenerate={() => handleTotalGenerate(true)}
               scheduleLabel="전체 여행"
               recommends={recommends}
+              travel={travel}
               schedule={totalSchedule.length > 0 ? totalSchedule : (() => {
                 if (!totalStartDate || !totalEndDate) return [];
                 const days = [];
@@ -605,29 +675,24 @@ export default function Plan() {
               onGenerate={() => handleGenerate(true)}
               scheduleLabel={selectedDate ? `${selectedDate.month}월 ${selectedDate.date}일 ${selectedDate.day}요일` : "일정"}
               recommends={recommends}
+              travel={travel}
               schedule={schedule}
               aiInput={aiInput}
               onAiChange={(e) => setAiInput(e.target.value)}
               onAiSubmit={handleSubmitAi}
+              selectedDateKey={selectedDateKey}
+              isEditMode={isEditMode}
+              onEditToggle={handleEditToggle}
+              onDeleteItem={handleDeleteItem}
+              onUpdateItem={handleUpdateItem}
+              onAddItem={handleAddItem}
+              onSaveEdits={handleSaveEdits}
             />
           </PlannerBox>
         </>
       )}
 
-      <BottomNav>
-        <NavItem onClick={() => handleNavClick("/home")}>
-          <NavIcon><img src={TabHome} alt="홈" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/plan")}>
-          <NavIcon $active><img src={TabCalendar} alt="일정" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/count")}>
-          <NavIcon><img src={TabCamera} alt="가계부" /></NavIcon>
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/mypage")}>
-          <NavIcon><img src={TabUser} alt="마이페이지" /></NavIcon>
-        </NavItem>
-      </BottomNav>
+      <BottomNavigation />
 
       <AddPlanModal 
         isOpen={addModal} 

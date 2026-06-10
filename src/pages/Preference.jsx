@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../api";
 import {
@@ -52,9 +52,23 @@ export const CATEGORIES = [
 export default function Preference() {
   const navigate = useNavigate();
   const location = useLocation();
+  const from = location.state?.from;
 
-  // 로그인 시 navigate("/preference", { state: { username: "아이디" } }) 로 넘겨받음
-  const username = location.state?.username || "OOO";
+  const [username, setUsername] = useState("OOO");
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const data = await api.auth.getUsername();
+        if (data && data.user_id) {
+          setUsername(data.user_id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch username", err);
+      }
+    };
+    fetchUsername();
+  }, []);
 
   // 선택한 카테고리 id 배열 (최대 3개)
   const [selected, setSelected] = useState([]);
@@ -72,33 +86,23 @@ export default function Preference() {
   const handleComplete = async () => {
     try {
       await api.auth.updateUser({ taste: JSON.stringify(selected) });
-      navigate("/travelstart");
+      if (from === "mypage") {
+        navigate("/mypage");
+      } else {
+        navigate("/travelstart");
+      }
     } catch (err) {
       console.error(err);
       alert("취향 저장에 실패했습니다.");
     }
-
-    // try {
-    //   const response = await fetch("", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       "Authorization": `Bearer ${localStorage.getItem("token")}`,
-    //     },
-    //     body: JSON.stringify({ taste: selected }),
-    //   });
-    //   if (response.ok) {
-    //     navigate("/travelstart");
-    //   } else {
-    //     alert("취향 저장에 실패했어요");
-    //   }
-    // } catch (err) {
-    //   alert("네트워크 오류가 발생했어요");
-    // }
   };
 
   const handleSkip = () => {
-    navigate("/travelstart");
+    if (from === "mypage") {
+      navigate("/mypage");
+    } else {
+      navigate("/travelstart");
+    }
   };
 
   return (
@@ -115,7 +119,9 @@ export default function Preference() {
             />
           </svg>
         </BackButton>
-        <SkipButton onClick={handleSkip}>건너뛰기</SkipButton>
+        {from !== "mypage" && (
+          <SkipButton onClick={handleSkip}>건너뛰기</SkipButton>
+        )}
       </Header>
 
       <Body>
@@ -162,7 +168,7 @@ export default function Preference() {
           >
             완료
           </CompleteButton>
-          <SkipFooterButton onClick={handleSkip}>건너뛰기</SkipFooterButton>
+          <SkipFooterButton onClick={handleSkip}>{ from === "mypage" ? "취소" : "건너뛰기" }</SkipFooterButton>
         </Footer>
       </Body>
     </Screen>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Screen,
@@ -61,18 +61,12 @@ import {
   JapaneseSub,
   JapaneseMeaning,
 
-  BottomNav,
-  NavItem,
-  NavIconImg,
 } from "../styles/Home";
 
 import JapaneseModal from "../components/JapaneseModal";
+import BottomNavigation from "../components/BottomNavigation";
 import { api } from "../api";
 
-import TabHome from "../assets/tab-home.svg";
-import TabCalendar from "../assets/tab-calendar.svg";
-import TabCamera from "../assets/tab-camera.svg";
-import TabUser from "../assets/tab-user.svg";
 import ArrowRight from "../assets/uiw_right.svg";
 import ArrowDown from "../assets/arrow-b.svg";
 import Ling1 from "../assets/ling.svg";
@@ -89,6 +83,7 @@ const DUMMY_DATA = {
     text: "これはいくらですか？",
     pronunciation: "코레와 이쿠라데스카?",
     meaning: "이거 얼마에요?",
+    audio_url: "",
   },
 };
 
@@ -104,8 +99,69 @@ export default function Home() {
   const [usedPercent, setUsedPercent] = useState(0);
   const [isTravelDay, setIsTravelDay] = useState(false);
   const [isJapaneseModalOpen, setIsJapaneseModalOpen] = useState(false);
+  const [japanese, setJapanese] = useState(null);
+
+  const [isTtsPlaying, setIsTtsPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const handleSpeak = (e) => {
+    e.stopPropagation();
+    if (!japanese?.audio_url) return;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const audio = new Audio(japanese.audio_url);
+    audioRef.current = audio;
+
+    audio.onplay = () => setIsTtsPlaying(true);
+    audio.onended = () => setIsTtsPlaying(false);
+    audio.onerror = (err) => {
+      console.error("Audio playback error:", err);
+      setIsTtsPlaying(false);
+    };
+
+    audio.play().catch(err => {
+      console.error("Audio play failed:", err);
+      setIsTtsPlaying(false);
+    });
+  };
+
+  const handleRefreshJapanese = async () => {
+    try {
+      const data = await api.japanese.refresh();
+      setJapanese({
+        category: data.category,
+        text: data.japanese,
+        pronunciation: data.pronunciation,
+        meaning: data.korean_translation,
+        audio_url: data.audio_url,
+      });
+    } catch (err) {
+      console.warn("refreshJapanese failed", err);
+      alert("일본어 표현을 새로고침하는 데 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
+    const fetchJapanese = async () => {
+      try {
+        const data = await api.japanese.getDaily();
+        setJapanese({
+          category: data.category,
+          text: data.japanese,
+          pronunciation: data.pronunciation,
+          meaning: data.korean_translation,
+          audio_url: data.audio_url,
+        });
+      } catch (err) {
+        console.warn("fetchDailyJapanese failed", err);
+        setJapanese(DUMMY_DATA.japanese);
+      }
+    }
+    fetchJapanese();
+
     const hasSeenToday = sessionStorage.getItem("seen_japanese_modal");
     if (!hasSeenToday) {
       setIsJapaneseModalOpen(true);
@@ -124,7 +180,7 @@ export default function Home() {
         const travelId = u?.lastest_travel_id;
 
         if (!travelId) {
-          alert("현재 여행 정보가 없습니다. 여행 시작 페이지로 이동합니다.");
+          alert("현재 여행 정보가 없습니다. 여행 등록 페이지로 이동합니다.");
           navigate("/travelstart");
           return;
         }
@@ -142,22 +198,24 @@ export default function Home() {
             setTravel(travelData);
 
             // 오늘이 여행 날짜인지 확인
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const startDate = new Date(travelData.travel_start_date);
-            startDate.setHours(0, 0, 0, 0);
-            const endDate = new Date(travelData.travel_end_date);
-            endDate.setHours(0, 0, 0, 0);
+            if (travelData) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const startDate = new Date(travelData.travel_start_date);
+              startDate.setHours(0, 0, 0, 0);
+              const endDate = new Date(travelData.travel_end_date);
+              endDate.setHours(0, 0, 0, 0);
 
-            const travelDay = today >= startDate && today <= endDate;
-            setIsTravelDay(travelDay);
+              const travelDay = today >= startDate && today <= endDate;
+              setIsTravelDay(travelDay);
 
-            if (travelDay) {
-              const planners = await api.planner.getAll(travelId);
-              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-              const todayPlan = planners.find((p) => p.plan_date === todayStr);
-              if (todayPlan && mounted) {
-                setTodaySchedule(todayPlan.items || []);
+              if (travelDay) {
+                const planners = await api.planner.getAll(travelId);
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+                const todayPlan = planners.find((p) => p.plan_date === todayStr);
+                if (todayPlan && mounted) {
+                  setTodaySchedule(todayPlan.items || []);
+                }
               }
             }
           }
@@ -206,8 +264,6 @@ export default function Home() {
     Math.abs(amount).toLocaleString("ko-KR", { minimumFractionDigits: 0 }) +
     " 원";
 
-  const handleNavClick = (path) => navigate(path);
-
   return (
     <Screen>
       <Header>
@@ -231,10 +287,10 @@ export default function Home() {
           <BudgetNoticeWrapper>
             <BudgetBadge>
               <BudgeIcon src={ArrowDown} alt="" />
-              {usedPercent}%
+              {usedPercent || 0}%
             </BudgetBadge>
             <BudgetNotice>
-              기존 예산에서 {usedPercent}% 사용
+              기존 예산에서 {usedPercent || 0}% 사용
             </BudgetNotice>
           </BudgetNoticeWrapper>
         </BudgetCard>
@@ -275,7 +331,11 @@ export default function Home() {
 
       <SectionHeader>
         <SectionTitle>오늘의 일정</SectionTitle>
-        <MoreButton onClick={() => navigate("/plan")}>
+        <MoreButton onClick={() => {
+          const t = new Date();
+          const todayKey = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+          navigate("/plan", { state: { tab: "daily", selectedDate: todayKey } });
+        }}>
           <img src={ArrowRight} alt="더보기" />
         </MoreButton>
       </SectionHeader>
@@ -360,36 +420,24 @@ export default function Home() {
 
         <JapaneseCard>
           <JapaneseCardHeader>
-            <JapanesePill>{DUMMY_DATA.japanese.category}</JapanesePill>
-            <JapaneseSound type="button" aria-label="sound" onClick={(e) => e.stopPropagation()}>
+            <JapanesePill>{japanese?.category || "불러오는 중..."}</JapanesePill>
+            <JapaneseSound type="button" aria-label="sound" onClick={handleSpeak}>
               <img src={sound} alt="발음 듣기" />
             </JapaneseSound>
           </JapaneseCardHeader>
-          <JapaneseText>{DUMMY_DATA.japanese.text}</JapaneseText>
-          <JapaneseSub>{DUMMY_DATA.japanese.pronunciation}</JapaneseSub>
-          <JapaneseMeaning>{DUMMY_DATA.japanese.meaning}</JapaneseMeaning>
+          <JapaneseText>{japanese?.text || "..."}</JapaneseText>
+          <JapaneseSub>{japanese?.pronunciation || "..."}</JapaneseSub>
+          <JapaneseMeaning>{japanese?.meaning || "..."}</JapaneseMeaning>
         </JapaneseCard>
       </JapaneseWrapper>
 
-      <BottomNav>
-        <NavItem $active onClick={() => handleNavClick("/home")}>
-          <NavIconImg src={TabHome} alt="홈" />
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/plan")}>
-          <NavIconImg src={TabCalendar} alt="일정" />
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/count")}>
-          <NavIconImg src={TabCamera} alt="가계부" />
-        </NavItem>
-        <NavItem onClick={() => handleNavClick("/mypage")}>
-          <NavIconImg src={TabUser} alt="마이페이지" />
-        </NavItem>
-      </BottomNav>
+      <BottomNavigation />
 
       <JapaneseModal
         open={isJapaneseModalOpen}
         onClose={() => setIsJapaneseModalOpen(false)}
-        data={DUMMY_DATA.japanese}
+        data={japanese || DUMMY_DATA.japanese}
+        onRefresh={handleRefreshJapanese}
       />
     </Screen>
   );

@@ -29,6 +29,7 @@ export const api = {
     updateUser: (body) => request("PATCH", "/api/auth/user", body),
     deleteUser: () => request("DELETE", "/api/auth/user"),
     getUsername: () => request("GET", `/api/auth/username`),
+    logout: () => request("POST", "/api/auth/logout"),
   },
 
   // ── Travel ───────────────────────────────────────────
@@ -79,5 +80,11 @@ export const api = {
   // ── Exchange Rate ─────────────────────────────────────
   exchangeRate: {
     get: () => request("GET", "/api/exchange-rate"),
+  },
+
+  // ── Japanese ─────────────────────────────────────
+  japanese: {
+    getDaily: () => request("GET", "/api/japanese/daily"),
+    refresh: () => request("PATCH", "/api/japanese/refresh"),
   },
 };
