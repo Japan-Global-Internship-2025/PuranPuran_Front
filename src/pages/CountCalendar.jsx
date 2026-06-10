@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import LogoSvg from "../assets/logo1.svg";
+import BottomNavigation from "../components/BottomNavigation";
+import ExpenseDetailModal from "../components/ExpenseDetailModal";
 import { api } from "../api";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -16,6 +18,7 @@ export default function CountCalendar() {
   
   const [receipts, setReceipts] = useState([]);
   const [travelId, setTravelId] = useState(null);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   // 1. 초기 로드 (사용자 및 여행 영수증 전체 데이터)
   useEffect(() => {
@@ -74,17 +77,32 @@ export default function CountCalendar() {
   }).map(r => ({
     id: r.id,
     name: r.title,
-    location: r.location || r.category || "지출",
+    location: r.category || "지출",
     krw: Math.round(r.total_krw || 0),
-    yen: Math.round(r.total_amount || 0)
+    yen: Math.round(r.total_amount || 0),
+    raw: r,
   })) : [];
+
+  // 수정 저장 후 목록 갱신
+  const handleSaved = (updated) => {
+    if (!updated) return;
+    setReceipts(prev => prev.map(r => (r.id === updated.id ? { ...r, ...updated } : r)));
+  };
+
+  // 삭제 후 목록에서 제거
+  const handleDeleted = (deletedId) => {
+    setReceipts(prev => prev.filter(r => r.id !== deletedId));
+  };
 
   return (
     <Screen>
+      <LogoHeader>
+        <Logo src={LogoSvg} alt="PURAN PURAN" />
+      </LogoHeader>
       <Header>
         <BackBtn onClick={() => navigate("/count")}>
           <svg width="10" height="16" viewBox="0 0 8 14" fill="none">
-            <path d="M7 1L1 7L7 13" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 1L1 7L7 13" stroke="#454545" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </BackBtn>
         <HeaderTitle>한 달 지출</HeaderTitle>
@@ -128,13 +146,13 @@ export default function CountCalendar() {
       {selectedDay && (
         <DetailSection>
           <DetailHeader>
-            {calMonth + 1}월 {selectedDay}일 지출 내역
+            지출 내역
           </DetailHeader>
           {selectedExpenses.length === 0 ? (
-            <EmptyText>지출 내역이 없어요</EmptyText>
+            <EmptyText>아직 기록이 없어요 😢</EmptyText>
           ) : (
             selectedExpenses.map(item => (
-              <ExpenseItem key={item.id}>
+              <ExpenseItem key={item.id} onClick={() => setSelectedReceipt(item.raw)}>
                 <ExpenseInfo>
                   <ExpenseName>{item.name}</ExpenseName>
                   <ExpenseLocation>{item.location}</ExpenseLocation>
@@ -147,6 +165,17 @@ export default function CountCalendar() {
             ))
           )}
         </DetailSection>
+      )}
+
+      <BottomNavigation />
+
+      {selectedReceipt && (
+        <ExpenseDetailModal
+          receipt={selectedReceipt}
+          onClose={() => setSelectedReceipt(null)}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
       )}
     </Screen>
   );
@@ -161,12 +190,26 @@ const Screen = styled.div`
   padding-bottom: 40px;
 `;
 
+const LogoHeader = styled.div`
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  background: #ff871e;
+`;
+
+const Logo = styled.img`
+  height: 24px;
+`;
+
 const Header = styled.header`
   height: 56px;
   display: flex;
   align-items: center;
   padding: 0 20px;
-  background: #ff871e;
+  background: #fff;
+  border-bottom: 1px solid #f5f5f5;
 `;
 
 const BackBtn = styled.button`
@@ -183,7 +226,7 @@ const HeaderTitle = styled.div`
   text-align: center;
   font-size: 17px;
   font-weight: 700;
-  color: #fff;
+  color: #454545;
 `;
 
 const CalendarCard = styled.div`
@@ -262,34 +305,38 @@ const Dot = styled.div`
 `;
 
 const DetailSection = styled.div`
-  background: #fff;
-  border-radius: 20px;
   margin: 0 16px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  padding: 0;
 `;
 
 const DetailHeader = styled.div`
   font-size: 16px;
   font-weight: 700;
   color: #111;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding: 0 8px;
 `;
 
 const EmptyText = styled.div`
   font-size: 14px;
   color: #aaa;
   text-align: center;
-  padding: 20px 0;
+  padding: 40px 16px;
 `;
 
 const ExpenseItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f5f5f5;
-  &:last-child { border-bottom: none; }
+  padding: 16px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.03);
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  &:active { transform: scale(0.99); }
+  &:last-child { margin-bottom: 0; }
 `;
 
 const ExpenseInfo = styled.div``;

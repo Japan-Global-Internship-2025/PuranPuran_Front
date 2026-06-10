@@ -146,9 +146,12 @@ export const ExchangeInfo = styled.div`
 `;
 
 export const ExchangeTime = styled.div`
+  color: #9A9A9A;
+  font-family: "Pretendard Variable";
   font-size: 12px;
-  color: #9a9a9a;
-  margin-bottom: 4px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 13px; /* 108.333% */
 `;
 export const ExchangeRateRow = styled.div`
   display: flex;
@@ -156,9 +159,12 @@ export const ExchangeRateRow = styled.div`
   gap: 6px;
 `;
 export const ExchangeRate = styled.div`
-  font-size: 22px;
-  font-weight: 900;
   color: #454545;
+  font-family: "Pretendard Variable";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 30px; /* 125% */
 
   span {
     margin-left: 6px;
@@ -335,15 +341,15 @@ export const ScheduleTag = styled.span`
   border-radius: 26px;
 
   /* 태그 종류에 따른 배경색 (피그마 rgba 수치) */
-  background: ${props => 
-    props.$tag === 'shopping' ? 'rgba(86, 213, 255, 0.20)' : 
-    props.$tag === 'meal' ? 'rgba(255, 155, 148, 0.50)' : '#f5f5f5'
+  background: ${props =>
+    props.$tag === 'shopping' ? 'rgba(86, 213, 255, 0.20)' :
+      props.$tag === 'meal' ? 'rgba(255, 155, 148, 0.50)' : '#f5f5f5'
   };
 
   /* 태그 종류에 따른 테두리 (피그마 rgba 수치) */
-  border: 1px solid ${props => 
-    props.$tag === 'shopping' ? 'rgba(86, 213, 255, 0.30)' : 
-    props.$tag === 'meal' ? 'rgba(243, 80, 68, 0.44)' : '#e6e6e6'
+  border: 1px solid ${props =>
+    props.$tag === 'shopping' ? 'rgba(86, 213, 255, 0.30)' :
+      props.$tag === 'meal' ? 'rgba(243, 80, 68, 0.44)' : '#e6e6e6'
   };
 `;
 

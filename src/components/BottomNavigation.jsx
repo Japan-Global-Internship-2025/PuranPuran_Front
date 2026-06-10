@@ -8,7 +8,8 @@ import TabUser from "../assets/tab-user.svg";
 export default function BottomNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
-  const active = location.pathname.split("/")[1] || "home";
+  let active = location.pathname.split("/")[1] || "home";
+  if (active === "count-calendar") active = "count";
 
   return (
     <BottomNav>
