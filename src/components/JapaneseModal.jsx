@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { speakJapanese } from "../utils/speak";
 import {
   Overlay,
   ModalCard,
@@ -31,17 +32,9 @@ export default function JapaneseModal({ open, onClose, data, onRefresh }) {
   }, [open]);
 
   const handleSpeak = () => {
-    if (!data?.audio_url) return;
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-
-    const audio = new Audio(data.audio_url);
-    audioRef.current = audio;
-    audio.play().catch(err => {
-      console.error("Audio play failed:", err);
-    });
+    if (!data?.text) return;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    speakJapanese(data.text, data.audio_url);
   };
 
   if (!open) return null;

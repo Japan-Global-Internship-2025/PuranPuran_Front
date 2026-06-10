@@ -33,10 +33,8 @@ export const BudgetCard = styled.div`
 
 export const BudgetLabel = styled.div`
   font-size: 13px;
-  opacity: 0.9
+  opacity: 0.9;
   margin-bottom: 12px;
-
-  }
 `;
 
 export const BudgetInfo = styled.div`
@@ -202,11 +200,10 @@ export const MoreButton = styled.button`
   background: none;
   border: none;
   color: #949494;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
   
   img {
     width: 16px;
@@ -274,19 +271,26 @@ export const CategoryList = styled.div`
 
 export const CategoryItem = styled.div`
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 12px 0;
-  
+
   &:not(:last-child) {
     border-bottom: 1px solid #f5f5f5;
   }
 `;
 
+export const CategoryItemHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+`;
+
 export const CategoryIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  background: #ffffff;
+  width: 24px;
+  height: 24px;
+  background: transparent;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -297,20 +301,30 @@ export const CategoryIcon = styled.div`
 
 export const CategoryInfo = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 `;
 
 export const CategoryName = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #111;
-  margin-bottom: 6px;
+  color: #454545;
+`;
+
+export const CategoryAmountWrapper = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+  text-align: right;
 `;
 
 export const CategoryBar = styled.div`
   width: 100%;
   height: 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
+  background: #d9d9d9;
+  border-radius: 9px;
   overflow: hidden;
 `;
 
@@ -318,20 +332,20 @@ export const CategoryFill = styled.div`
   width: ${props => props.percent}%;
   height: 100%;
   background: ${props => props.color || '#ff871e'};
-  border-radius: 3px;
+  border-radius: 9px;
   transition: width 0.3s ease;
 `;
 
 export const CategoryAmount = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #111;
+  color: #454545;
 `;
 
 export const CategoryPercent = styled.div`
   font-size: 12px;
+  font-weight: 400;
   color: #949494;
-  margin-top: 2px;
 `;
 
 //하단바

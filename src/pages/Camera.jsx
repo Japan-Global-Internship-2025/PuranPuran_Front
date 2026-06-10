@@ -5,6 +5,18 @@ import { api } from "../api";
 import LogoSvg from "../assets/logo1.svg";
 
 const CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
+
+// input[type=date]는 YYYY-MM-DD만 허용 — AI가 다양한 포맷으로 반환해도 정규화
+function normalizeDate(raw) {
+  if (!raw) return null;
+  // YYYY-MM-DD 또는 YYYY/MM/DD 패턴 추출
+  const m = String(raw).match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  // ISO 문자열 (T 포함)
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+  return null;
+}
 const PAYMENT_METHODS = ["현금", "카드"];
 
 export default function Camera() {
@@ -106,7 +118,7 @@ export default function Camera() {
         category: result?.category || "식비",
         location: result?.location || "",
         payment_method: paymentMethodHandled,
-        date: result?.date ? result.date.split("T")[0] : prev.date
+        date: normalizeDate(result?.date) ?? prev.date
       }));
     } catch (err) {
       console.warn("AI analyze failed", err);

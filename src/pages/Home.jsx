@@ -66,6 +66,7 @@ import {
 import JapaneseModal from "../components/JapaneseModal";
 import BottomNavigation from "../components/BottomNavigation";
 import { api } from "../api";
+import { speakJapanese } from "../utils/speak";
 
 import ArrowRight from "../assets/uiw_right.svg";
 import ArrowDown from "../assets/arrow-b.svg";
@@ -106,25 +107,11 @@ export default function Home() {
 
   const handleSpeak = (e) => {
     e.stopPropagation();
-    if (!japanese?.audio_url) return;
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-
-    const audio = new Audio(japanese.audio_url);
-    audioRef.current = audio;
-
-    audio.onplay = () => setIsTtsPlaying(true);
-    audio.onended = () => setIsTtsPlaying(false);
-    audio.onerror = (err) => {
-      console.error("Audio playback error:", err);
-      setIsTtsPlaying(false);
-    };
-
-    audio.play().catch(err => {
-      console.error("Audio play failed:", err);
-      setIsTtsPlaying(false);
+    if (!japanese?.text) return;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    speakJapanese(japanese.text, japanese.audio_url, {
+      onStart: () => setIsTtsPlaying(true),
+      onEnd: () => setIsTtsPlaying(false),
     });
   };
 
@@ -394,7 +381,7 @@ export default function Home() {
               <ExpenseItem key={expense.id ?? idx}>
                 <ExpenseInfo>
                   <ExpenseName>{expense.title ?? expense.store ?? "지출"}</ExpenseName>
-                  <ExpenseLocation>{expense.location ?? expense.category ?? ""}</ExpenseLocation>
+                  <ExpenseLocation>{expense.category ?? expense.location ?? ""}</ExpenseLocation>
                 </ExpenseInfo>
                 <ExpenseAmount>
                   {formatExpense(expense.total_krw ?? expense.amount)}

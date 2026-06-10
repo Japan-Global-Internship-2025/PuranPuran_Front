@@ -47,9 +47,13 @@ import {
   CategoryPercent,
   CategoryBar,
   CategoryFill,
+  CategoryItemHeader,
+  CategoryAmountWrapper,
 } from "../styles/Count";
 import { api } from "../api";
 import BottomNavigation from "../components/BottomNavigation";
+import AddExpenseModal from "../components/AddExpenseModal";
+import EditBudgetModal from "../components/EditBudgetModal";
 // import { getTravelWithFallback } from "../utils/travel";
 
 import ArrowRight from "../assets/uiw_right.svg";
@@ -60,6 +64,7 @@ import drink from "../assets/tabler_cup.svg";
 import shopping from "../assets/shopping.svg";
 import other from "../assets/gg.svg";
 import LogoSvg from "../assets/logo1.svg";
+import RightArrow from "../assets/uiw_right.svg";
 
 const DUMMY_DATA = {
   budget: { total: 0, used: 0, percent: 0, remaining: 0 },
@@ -68,54 +73,8 @@ const DUMMY_DATA = {
   categories: [],
 };
 
-// 예산 수정 모달
-function EditBudgetModal({ travelId, currentBudget, onClose, onSave }) {
-  const [budget, setBudget] = useState(currentBudget);
-
-  const handleSubmit = async () => {
-    try {
-      await api.travel.update(travelId, { travel_budget: Number(budget) });
-      onSave(Number(budget));
-      onClose();
-    } catch (err) {
-      console.error("updateBudget failed", err);
-      alert("예산 수정에 실패했습니다.");
-    }
-  };
-
-  return (
-    <ReceiptModalOverlay onClick={onClose}>
-      <ReceiptModalSheet onClick={e => e.stopPropagation()}>
-        <ReceiptModalHeader>
-          <ReceiptModalTitleArea>
-            <ReceiptModalTitle>예산 수정하기</ReceiptModalTitle>
-          </ReceiptModalTitleArea>
-          <ReceiptModalClose onClick={onClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="#888" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </ReceiptModalClose>
-        </ReceiptModalHeader>
-
-        <ReceiptModalBody>
-          <ReceiptModalField>
-            <ReceiptModalLabel>새로운 예산 (KRW)</ReceiptModalLabel>
-            <ReceiptModalInput
-              type="number"
-              placeholder="예산을 입력하세요"
-              value={budget}
-              onChange={e => setBudget(e.target.value)}
-            />
-          </ReceiptModalField>
-        </ReceiptModalBody>
-
-        <ReceiptModalFooter>
-          <ReceiptModalButton onClick={handleSubmit}>저장하기</ReceiptModalButton>
-        </ReceiptModalFooter>
-      </ReceiptModalSheet>
-    </ReceiptModalOverlay>
-  );
-}
+const EXPENSE_CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
+const PAYMENT_METHODS = ["현금", "카드"];
 
 export default function Count() {
   const navigate = useNavigate();
@@ -189,14 +148,14 @@ export default function Count() {
         // recentExpenses 정규화 (필드명 통일)
         const normalizedRecent = Array.isArray(recent)
           ? recent.map(r => ({
-              id: r.id,
-              title: r.title || "알 수 없음",
-              location: r.location || r.category || "",
-              category: r.category || "기타",
-              total_amount: toSafeNum(r.total_amount),
-              total_krw: toSafeNum(r.total_krw),
-              date: r.date,
-            }))
+            id: r.id,
+            title: r.title || "알 수 없음",
+            location: r.location || r.category || "",
+            category: r.category || "기타",
+            total_amount: toSafeNum(r.total_amount),
+            total_krw: toSafeNum(r.total_krw),
+            date: r.date,
+          }))
           : [];
 
         setData({
@@ -221,20 +180,19 @@ export default function Count() {
   const formatKrw = (amount) => "₩" + toSafeNum(amount).toLocaleString("ko-KR");
   const formatYen = (amount) => `¥${toSafeNum(amount).toLocaleString()}`;
 
-  const handleSaveExpense = async (form) => {
-    // ... 기존과 동일
+  const handleSaveExpense = () => {
     window.location.reload();
   };
-  
+
   const handleSaveBudget = (newBudget) => {
-      setTravel(prev => ({ ...prev, travel_budget: newBudget }));
-      const used = data.budget.used;
-      const remaining = newBudget - used;
-      const percent = newBudget > 0 ? Math.min(100, Math.round((used / newBudget) * 100)) : 0;
-      setData(prev => ({
-          ...prev,
-          budget: { total: newBudget, used, percent, remaining }
-      }));
+    setTravel(prev => ({ ...prev, travel_budget: newBudget }));
+    const used = data.budget.used;
+    const remaining = newBudget - used;
+    const percent = newBudget > 0 ? Math.min(100, Math.round((used / newBudget) * 100)) : 0;
+    setData(prev => ({
+      ...prev,
+      budget: { total: newBudget, used, percent, remaining }
+    }));
   }
 
 
@@ -245,14 +203,14 @@ export default function Count() {
         <Logo src={LogoSvg} alt="PURAN PURAN" />
         <CalendarBtn onClick={() => navigate("/count-calendar")}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="4" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8"/>
-            <path d="M3 9H21" stroke="white" strokeWidth="1.8"/>
-            <path d="M8 2V5M16 2V5" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-            <circle cx="8" cy="13" r="1" fill="white"/>
-            <circle cx="12" cy="13" r="1" fill="white"/>
-            <circle cx="16" cy="13" r="1" fill="white"/>
-            <circle cx="8" cy="17" r="1" fill="white"/>
-            <circle cx="12" cy="17" r="1" fill="white"/>
+            <rect x="3" y="4" width="18" height="18" rx="3" stroke="white" strokeWidth="1.8" />
+            <path d="M3 9H21" stroke="white" strokeWidth="1.8" />
+            <path d="M8 2V5M16 2V5" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="8" cy="13" r="1" fill="white" />
+            <circle cx="12" cy="13" r="1" fill="white" />
+            <circle cx="16" cy="13" r="1" fill="white" />
+            <circle cx="8" cy="17" r="1" fill="white" />
+            <circle cx="12" cy="17" r="1" fill="white" />
           </svg>
         </CalendarBtn>
       </Header>
@@ -260,8 +218,8 @@ export default function Count() {
       {/* 예산 카드 */}
       <BudgetCard>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <BudgetLabel>이번 여행 예산</BudgetLabel>
-            <button onClick={() => setShowBudgetModal(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>수정</button>
+          <BudgetLabel>이번 여행 예산</BudgetLabel>
+          <button onClick={() => setShowBudgetModal(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>수정</button>
         </div>
         <BudgetInfo>
           <div>
@@ -311,14 +269,16 @@ export default function Count() {
       <ExpenseSection>
         <SectionHeader>
           <SectionTitle>최근 지출</SectionTitle>
-          <MoreButton onClick={() => navigate("/count-calendar")}>전체보기</MoreButton>
+          <MoreButton onClick={() => navigate("/count-calendar")}>
+            전체보기 <img src={RightArrow} alt="더보기" style={{ height: '10px' }} />
+          </MoreButton>
         </SectionHeader>
         <ExpenseList>
           {data.recentExpenses.map((expense) => (
             <ExpenseItem key={expense.id}>
               <ExpenseInfo>
                 <ExpenseName>{expense.title}</ExpenseName>
-                <ExpenseLocation>{expense.location || expense.category}</ExpenseLocation>
+                <ExpenseLocation>{expense.category}</ExpenseLocation>
               </ExpenseInfo>
               <ExpenseAmount>
                 -{formatKrw(expense.total_krw)}
@@ -333,24 +293,23 @@ export default function Count() {
       <CategorySection>
         <SectionHeader>
           <SectionTitle>카테고리별 지출</SectionTitle>
-          <MoreButton><img src={ArrowRight} alt="더보기" /></MoreButton>
         </SectionHeader>
         <CategoryList>
           {data.categories.map((category) => (
             <CategoryItem key={category.id}>
-              <CategoryIcon>
-                <img src={category.icon} alt={category.name} style={{ width: 24, height: 24 }} />
-              </CategoryIcon>
-              <CategoryInfo>
+              <CategoryItemHeader>
+                <CategoryIcon>
+                  <img src={category.icon} alt={category.name} style={{ width: 24, height: 24 }} />
+                </CategoryIcon>
                 <CategoryName>{category.name}</CategoryName>
-                <CategoryBar>
-                  <CategoryFill percent={category.percent} />
-                </CategoryBar>
-              </CategoryInfo>
-              <div style={{ textAlign: "right" }}>
-                <CategoryAmount>{toSafeNum(category.amount).toLocaleString("ko-KR")}원</CategoryAmount>
-                <CategoryPercent>{toSafeNum(category.percent)}%</CategoryPercent>
-              </div>
+                <CategoryAmountWrapper>
+                  <CategoryAmount>{toSafeNum(category.amount).toLocaleString("ko-KR")}원</CategoryAmount>
+                  <CategoryPercent>{toSafeNum(category.percent)}%</CategoryPercent>
+                </CategoryAmountWrapper>
+              </CategoryItemHeader>
+              <CategoryBar>
+                <CategoryFill percent={category.percent} />
+              </CategoryBar>
             </CategoryItem>
           ))}
         </CategoryList>
@@ -373,82 +332,6 @@ export default function Count() {
   );
 }
 
-/* ===== 모달 스타일 ===== */
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-`;
-
-const ModalSheet = styled.div`
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  background: #fff;
-  border-radius: 24px 24px 0 0;
-  padding: 12px 20px 40px;
-`;
-
-const ModalHandle = styled.div`
-  width: 40px;
-  height: 4px;
-  background: #e0e0e0;
-  border-radius: 2px;
-  margin: 0 auto 20px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  margin: 0 0 20px;
-`;
-
-const ModalField = styled.div`
-  margin-bottom: 16px;
-`;
-
-const ModalLabel = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
-`;
-
-const ModalInput = styled.input`
-  width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border: 1.5px solid #e6e6e6;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #111;
-  outline: none;
-  box-sizing: border-box;
-  &:focus { border-color: #ff871e; }
-`;
-
-const CategoryPicker = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const CatChip = styled.button`
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1.5px solid ${({ $active }) => ($active ? "#ff871e" : "#e6e6e6")};
-  background: ${({ $active }) => ($active ? "#fff5eb" : "#fff")};
-  color: ${({ $active }) => ($active ? "#ff871e" : "#555")};
-  font-size: 13px;
-  font-weight: ${({ $active }) => ($active ? "700" : "500")};
-  cursor: pointer;
-  transition: all 0.15s;
-`;
-
 const CalendarBtn = styled.button`
   background: none;
   border: none;
@@ -458,140 +341,4 @@ const CalendarBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-`;
-
-const ModalSubmit = styled.button`
-  width: 100%;
-  height: 52px;
-  margin-top: 8px;
-  background: #ff871e;
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  &:active { opacity: 0.9; }
-`;
-
-const ReceiptModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(3, 3, 3, 0.52);
-  z-index: 100000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
-`;
-
-const ReceiptModalSheet = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 380px;
-  border-radius: 20px;
-  background: #fff;
-  overflow: hidden;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.22);
-`;
-
-const ReceiptModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 28px 24px 16px;
-  gap: 8px;
-`;
-
-const ReceiptModalTitleArea = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const ReceiptModalSub = styled.div`
-  font-size: 12px;
-  color: #aaa;
-`;
-
-const ReceiptModalTitle = styled.div`
-  font-size: 22px;
-  font-weight: 700;
-  color: #111;
-`;
-
-const ReceiptModalClose = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-`;
-
-const ReceiptModalBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 0 24px 24px;
-`;
-
-const ReceiptModalRow = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const ReceiptModalField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const ReceiptModalLabel = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-`;
-
-const ReceiptModalInput = styled.input`
-  width: 100%;
-  height: 50px;
-  padding: 0 16px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  color: #333;
-  outline: none;
-  box-sizing: border-box;
-  &::placeholder { color: #bbb; }
-`;
-
-const ReceiptModalInputWithIcon = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 50px;
-  padding: 0 16px;
-  background: #f5f5f5;
-  border-radius: 10px;
-`;
-
-const ReceiptModalFooter = styled.div`
-  padding: 0 24px 28px;
-`;
-
-const ReceiptModalButton = styled.button`
-  width: 100%;
-  height: 54px;
-  background: #ff871e;
-  border: none;
-  border-radius: 12px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  &:active { opacity: 0.9; }
 `;
