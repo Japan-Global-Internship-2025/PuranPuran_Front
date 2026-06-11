@@ -5,7 +5,7 @@ export const Screen = styled.div`
   max-width: 480px;
   min-height: 100dvh;
   background: #f8f8f8;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  /* padding-bottom: calc(80px + env(safe-area-inset-bottom)); */
   overflow-x: hidden;
   margin: 0 auto;
   position: relative;
@@ -18,7 +18,7 @@ export const Screen = styled.div`
     transform: translateX(-50%);
     width: 100%;
     max-width: 480px;
-    height: calc(80px + env(safe-area-inset-bottom, 0px));
+    /* height: calc(80px + env(safe-area-inset-bottom, 0px)); */
     background: #fff;
     z-index: 99;
   }
@@ -505,6 +505,7 @@ export const ScheduleFooterText = styled.p`
 export const TimelineList = styled.div`
   padding-bottom: 8px;
   position: relative;
+  padding-bottom: calc(70px + env(safe-area-inset-bottom));
 `;
 
 export const TimelineRow = styled.div`
