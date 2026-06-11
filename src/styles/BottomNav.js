@@ -2,21 +2,24 @@ import styled from "styled-components";
 
 export const BottomNav = styled.nav`
   position: fixed;
-  bottom: calc(18px + env(safe-area-inset-bottom));
+  bottom: calc(40px + env(safe-area-inset-bottom));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%)
+    ${({ $shrunk }) => ($shrunk ? "translateY(16px) scale(0.85)" : "translateY(0) scale(1)")};
+  opacity: ${({ $shrunk }) => ($shrunk ? 0.6 : 1)};
+  transition: transform 0.25s ease, opacity 0.25s ease;
   width: 280px;
   height: 62px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 40px;
   z-index: 100;
+  border-radius: 33px;
+  background: rgba(255, 255, 255, 0.80);
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.10);
 `;
 
 export const NavItem = styled.button`

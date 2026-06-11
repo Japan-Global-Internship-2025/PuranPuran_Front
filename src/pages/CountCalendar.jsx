@@ -37,6 +37,15 @@ export default function CountCalendar() {
         }
         setTravelId(tId);
 
+        // 캘린더를 여행 시작 년/월로 이동 (여러 달에 걸치면 첫 여행일 기준)
+        const travelData = await api.travel.getOne(tId);
+        if (mounted && travelData?.travel_start_date) {
+          const startDate = new Date(travelData.travel_start_date);
+          setCalYear(startDate.getFullYear());
+          setCalMonth(startDate.getMonth());
+          setSelectedDay(startDate.getDate());
+        }
+
         const allReceipts = await api.spending.getReceipts(tId);
         if (mounted && Array.isArray(allReceipts)) {
           setReceipts(allReceipts);

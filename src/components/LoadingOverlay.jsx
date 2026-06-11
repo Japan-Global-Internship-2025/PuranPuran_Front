@@ -44,7 +44,7 @@ const SubText = styled.p`
   margin-top: 8px;
 `;
 
-export default function LoadingOverlay({ message = "AI가 최적의 일정을 짜고 있어요...", subMessage = "잠시만 기다려주세요!" }) {
+export default function LoadingOverlay({ message = "저장하고 있어요...", subMessage = "잠시만 기다려주세요!" }) {
   return (
     <Overlay>
       <Spinner />

@@ -119,7 +119,7 @@ export const ArrowIcon = styled.div`
 //lognout
 export const LogoutButton = styled.button`
   position: fixed;
-  bottom: 90px;
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 48px);

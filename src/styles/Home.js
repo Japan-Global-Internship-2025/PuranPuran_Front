@@ -236,9 +236,9 @@ export const MoreButton = styled.button`
   }
 
   span {
+    color: #949494;
     font-size: 12px;
-    font-weight: 800;
-    color: #9a9a9a;
+    cursor: pointer;
   }
 `;
 

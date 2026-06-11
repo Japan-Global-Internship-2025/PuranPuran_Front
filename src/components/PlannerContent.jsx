@@ -218,7 +218,7 @@ export default function PlannerContent({
         </RecommendBox>
       ) : (
         <RecommendBox>
-          <ScheduleSection>
+          <ScheduleSection paddingBottom={isEditMode ? "120px" : "30px"}>
             {isConfirmed ? (
               <>
                 <ScheduleSubtitle style={{ margin: "0 0 6px" }}>{dayMode ? "일정이 확정됐어요!" : "오늘의 일정이 확정됐어요!"}</ScheduleSubtitle>
@@ -227,7 +227,7 @@ export default function PlannerContent({
                   {!dayMode && (
                     <span
                       onClick={isEditMode ? onEditToggle : onEditToggle}
-                      style={{ fontSize: 12, fontWeight: 500, color: isEditMode ? "#ff871e" : "#9a9a9a", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                      style={{ fontSize: 12, fontWeight: 400, color: isEditMode ? "#ff871e" : "#9a9a9a", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
                     >
                       {isEditMode ? "편집취소" : "편집하기"}
                       {isEditMode ? (
@@ -307,7 +307,7 @@ export default function PlannerContent({
                   <TimelineRow key={item.id}>
                     <LeftComp>
                       <NumberBadge>{dayMode ? `${item.id}일차` : item.id}</NumberBadge>
-                      <TimePill>{dayMode ? item.date : item.time}</TimePill>
+                      <TimePill>{dayMode ? item.date.slice(2, 4) + "." + item.date.slice(5, 7) + "." + item.date.slice(8, 10) : item.time}</TimePill>
                     </LeftComp>
                     <TimelineCard
                       onClick={() => !isEditMode && setPinModal(item)}
@@ -343,37 +343,6 @@ export default function PlannerContent({
                 );
               })}
             </TimelineList>
-
-            {isEditMode && !dayMode && (
-              <div style={{ padding: "0 0 12px" }}>
-                <button
-                  onClick={() => setIsAddOpen(true)}
-                  style={{
-                    width: "100%", height: 46, background: "#fff5eb",
-                    border: "1.5px dashed #ff871e", borderRadius: 12,
-                    color: "#ff871e", fontSize: 14, fontWeight: 600,
-                    cursor: "pointer", display: "flex", alignItems: "center",
-                    justifyContent: "center", gap: 6,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14M5 12h14" stroke="#ff871e" strokeWidth="2.2" strokeLinecap="round"/>
-                  </svg>
-                  항목 추가
-                </button>
-                <button
-                  onClick={onSaveEdits}
-                  style={{
-                    width: "100%", height: 50, marginTop: 10,
-                    background: "#ff871e", border: "none", borderRadius: 12,
-                    color: "#fff", fontSize: 16, fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  저장하기
-                </button>
-              </div>
-            )}
 
             {!isConfirmed && !isEditMode && <ScheduleFooterText>이 일정이 마음에 드시나요?</ScheduleFooterText>}
           </ScheduleSection>
