@@ -11,8 +11,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'PURAN PURAN',
-        short_name: 'PURAN',
+        name: 'PuranPuran',
+        short_name: 'PuranPuran',
         description: '일본 여행 플래너 & 가계부',
         lang: 'ko',
         theme_color: '#FF871E',
