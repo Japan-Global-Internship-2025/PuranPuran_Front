@@ -49,6 +49,7 @@ import {
   CategoryFill,
   CategoryItemHeader,
   CategoryAmountWrapper,
+  EmptyExpenseText,
 } from "../styles/Count";
 import { api } from "../api";
 import BottomNavigation from "../components/BottomNavigation";
@@ -273,20 +274,24 @@ export default function Count() {
             전체보기 <img src={RightArrow} alt="더보기" style={{ height: '10px' }} />
           </MoreButton>
         </SectionHeader>
-        <ExpenseList>
-          {data.recentExpenses.map((expense) => (
-            <ExpenseItem key={expense.id}>
-              <ExpenseInfo>
-                <ExpenseName>{expense.title}</ExpenseName>
-                <ExpenseLocation>{expense.category}</ExpenseLocation>
-              </ExpenseInfo>
-              <ExpenseAmount>
-                -{formatKrw(expense.total_krw)}
-                <ExpenseYen>-{formatYen(expense.total_amount)}</ExpenseYen>
-              </ExpenseAmount>
-            </ExpenseItem>
-          ))}
-        </ExpenseList>
+        {data.recentExpenses.length === 0 ? (
+          <EmptyExpenseText>최근 지출이 없습니다</EmptyExpenseText>
+        ) : (
+          <ExpenseList>
+            {data.recentExpenses.map((expense) => (
+              <ExpenseItem key={expense.id}>
+                <ExpenseInfo>
+                  <ExpenseName>{expense.title}</ExpenseName>
+                  <ExpenseLocation>{expense.category}</ExpenseLocation>
+                </ExpenseInfo>
+                <ExpenseAmount>
+                  -{formatKrw(expense.total_krw)}
+                  <ExpenseYen>-{formatYen(expense.total_amount)}</ExpenseYen>
+                </ExpenseAmount>
+              </ExpenseItem>
+            ))}
+          </ExpenseList>
+        )}
       </ExpenseSection>
 
       {/* 카테고리 */}

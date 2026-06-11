@@ -4,8 +4,7 @@ export const Screen = styled.div`
   width: 100vw;
   min-height: 100dvh;
   background: #f8f8f8;
-  
-  padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
 `;
 
 export const Header = styled.header`
@@ -216,6 +215,15 @@ export const ExpenseList = styled.div`
   background: #fff;
   border-radius: 16px;
   padding: 0 16px;
+`;
+
+export const EmptyExpenseText = styled.div`
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: #aaa;
 `;
 
 export const ExpenseItem = styled.div`

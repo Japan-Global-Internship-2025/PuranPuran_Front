@@ -332,7 +332,7 @@ export const RecommendDesc = styled.div`
 /* ===== + 버튼 ===== */
 export const PlusButton = styled.button`
   position: fixed;
-  bottom: calc(148px + env(safe-area-inset-bottom));
+  bottom: calc(182px + env(safe-area-inset-bottom));
   right: 20px;
   width: 52px;
   height: 52px;
@@ -364,7 +364,7 @@ export const PlusButton = styled.button`
 /* ===== 일정 생성 요청 버튼 ===== */
 export const GenerateButton = styled.button`
   position: fixed;
-  bottom: calc(86px + env(safe-area-inset-bottom));
+  bottom: calc(110px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
@@ -445,7 +445,7 @@ export const NavIcon = styled.div`
 /* ===== 생성된 일정 뷰 ===== */
 export const ScheduleSection = styled.div`
   background: transparent;
-  padding: 20px 20px 0;
+  padding: 20px 20px ${(props) => (props.paddingBottom ? props.paddingBottom : "0px")};
 `;
 
 export const ScheduleTitle = styled.h2`
@@ -499,29 +499,40 @@ export const ScheduleFooterText = styled.p`
   font-size: 12px;
   color: #bbb;
   text-align: center;
-  margin: 8px 0 100px;
+  margin: 8px 0 0;
 `;
 
 export const TimelineList = styled.div`
   padding-bottom: 8px;
   position: relative;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 28px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #ffe0cc;
-    z-index: 0;
-  }
 `;
 
 export const TimelineRow = styled.div`
   display: flex;
   align-items: flex-start;
   padding-bottom: 16px;
+  position: relative;
+
+  /* 아이템 간 연결선 — 현재 숫자 박스 중앙에서 다음 숫자 박스 중앙까지 */
+  &::before {
+    content: "";
+    position: absolute;
+    left: 21px;
+    top: 13px;
+    bottom: -13px;
+    width: 1.5px;
+    background: #d9d9d9;
+    z-index: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+
+  /* 마지막 아이템에서는 선을 그리지 않음 */
+  &:last-child::before {
+    display: none;
+  }
 `;
 
 export const TimelineLeft = styled.div`

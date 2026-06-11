@@ -168,11 +168,19 @@ export default function Plan() {
             const navDate = location.state?.selectedDate;
             const navTab = location.state?.tab;
             const matchedDate = navDate && generated.find((d) => d.key === navDate);
-            setSelectedDateKey(matchedDate ? navDate : generated[0].key);
+            // 여행 기간 중이라면(오늘이 포함되면) 오늘 날짜를 자동 선택, 아니면 첫째 날
+            const todayDate = generated.find((d) => d.isToday);
+            setSelectedDateKey(
+              matchedDate ? navDate : (todayDate ? todayDate.key : generated[0].key)
+            );
             if (navTab) setActiveTab(navTab);
           }
-          setTotalStartDate(new Date(travelData.travel_start_date));
+          // 총 여행 플래너 캘린더를 여행 시작 년/월로 이동 (여러 달에 걸치면 첫 여행일 기준)
+          const startDate = new Date(travelData.travel_start_date);
+          setTotalStartDate(startDate);
           setTotalEndDate(new Date(travelData.travel_end_date));
+          setCalYear(startDate.getFullYear());
+          setCalMonth(startDate.getMonth());
         }
 
         try {
@@ -700,20 +708,29 @@ export default function Plan() {
         dayMode={activeTab === "total"} 
       />
 
-      <PlusButton aria-label="일정 추가" onClick={() => setAddModal(true)}>
-        <img src={PlusIcon} alt="일정 추가" width="24" height="24" />
-      </PlusButton>
+      {isEditMode && isCurrentTabConfirmed && (
+        <PlusButton aria-label="일정 추가" onClick={() => setAddModal(true)}>
+          <img src={PlusIcon} alt="일정 추가" width="24" height="24" />
+        </PlusButton>
+      )}
 
-      {!isCurrentTabConfirmed && (
+      {!isCurrentTabGenerated && (
         <GenerateButton onClick={currentGenerateHandler}>
-          <GenerateText>{isCurrentTabGenerated ? "일정 확정하기" : "일정생성 요청하기"}</GenerateText>
+          <GenerateText>일정생성 요청하기</GenerateText>
+          <img src={RightArrow} alt="" style={{ width: 18, height: 18, filter: "brightness(0) invert(1)" }} />
+        </GenerateButton>
+      )}
+
+      {isCurrentTabGenerated && (!isCurrentTabConfirmed || isEditMode) && (
+        <GenerateButton onClick={() => isEditMode ? handleSaveEdits() : currentGenerateHandler()}>
+          <GenerateText>일정 확정하기</GenerateText>
           <img src={RightArrow} alt="" style={{ width: 18, height: 18, filter: "brightness(0) invert(1)" }} />
         </GenerateButton>
       )}
 
       {isLoading && (
         <LoadingOverlay 
-          message={isCurrentTabGenerated ? "일정을 저장하고 있어요..." : "AI가 최적의 일정을 짜고 있어요..."} 
+          message={isCurrentTabGenerated ? "AI가 최적의 일정을 짜고 있어요..." : "일정을 저장하고 있어요..."} 
         />
       )}
     </Screen>

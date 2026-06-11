@@ -87,7 +87,7 @@ export const SoundButton = styled.button`
 
 export const RefreshButton = styled.button`
   position: absolute;
-  top: 20px;
+  top: 18px;
   right: 20px;
   border: none;
   background: transparent;
