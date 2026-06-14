@@ -3,66 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import LogoSvg from "../assets/logo1.svg";
 import {
-  Screen,
-  OrangeHeader,
-  LogoImg,
-  DarkNav,
-  BackBtn,
-  ViewfinderContainer,
-  Video,
-  Canvas,
-  ViewfinderOverlay,
-  ViewfinderFrame,
-  CameraControls,
-  GalleryIconBtn,
-  ShutterBtn,
-  ShutterInner,
-  FlashBtn,
-  CameraErrorBox,
-  GalleryFallbackBtn,
-  ConfirmImage,
-  ConfirmActions,
-  RetakeBtn,
-  AnalyzeBtn,
-  EditHeader,
-  EditHeaderTitle,
-  SaveBtn,
-  ReceiptPreview,
-  EditForm,
-  FieldLabel,
-  FieldInput,
-  ChipRow,
-  Chip,
-  KrwEstimate,
-  SubmitBtn,
-  DoneContainer,
-  DoneIcon,
-  DoneTitle,
-  DoneSub,
-  DoneBtn,
-  DoneBtnSecondary,
+  Screen, OrangeHeader, LogoImg, DarkNav, BackBtn, ViewfinderContainer,
+  Video, Canvas, ViewfinderOverlay, ViewfinderFrame, CameraControls,
+  GalleryIconBtn, ShutterBtn, ShutterInner, FlashBtn, CameraErrorBox,
+  GalleryFallbackBtn, ConfirmImage, ConfirmActions, RetakeBtn, AnalyzeBtn,
+  EditHeader, EditHeaderTitle, SaveBtn, ReceiptPreview, EditForm,
+  FieldLabel, FieldInput, ChipRow, Chip, KrwEstimate, SubmitBtn,
+  DoneContainer, DoneIcon, DoneTitle, DoneSub, DoneBtn, DoneBtnSecondary,
 } from "../styles/Camera";
 
 const CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
+const PAYMENT_METHODS = ["현금", "카드"];
 
-// input[type=date]는 YYYY-MM-DD만 허용 — AI가 다양한 포맷으로 반환해도 정규화
 function normalizeDate(raw) {
   if (!raw) return null;
-  // YYYY-MM-DD 또는 YYYY/MM/DD 패턴 추출
   const m = String(raw).match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
   if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
-  // ISO 문자열 (T 포함)
   const d = new Date(raw);
   if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
   return null;
 }
-const PAYMENT_METHODS = ["현금", "카드"];
 
-// 초광각/망원/심도 등 보조 렌즈를 식별 (메인 광각 카메라 우선 선택용)
 function isSpecialLens(label = "") {
-  return /ultra|wide angle|超広角|초광각|telephoto|tele|망원|depth|심도|0\.5/i.test(
-    label
-  );
+  return /ultra|wide angle|超広角|초광각|telephoto|tele|망원|depth|심도|0\.5/i.test(label);
 }
 
 export default function Camera() {
@@ -70,9 +33,13 @@ export default function Camera() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [stream, setStream] = useState(null);
+  
+  // 💡 [수정] 클로저 트랩을 피하기 위해 현재 실행 중인 스트림을 ref로 관리
+  const streamRef = useRef(null); 
+  const [streamState, setStreamState] = useState(null); // UI 리렌더링용
+
   const [capturedImage, setCapturedImage] = useState(null);
-  const [step, setStep] = useState("camera"); // "camera" | "confirm" | "edit" | "done"
+  const [step, setStep] = useState("camera");
   const [uploading, setUploading] = useState(false);
   const [parsed, setParsed] = useState(null);
   const [travelId, setTravelId] = useState(null);
@@ -86,7 +53,7 @@ export default function Camera() {
   const [isFlashOn, setIsFlashOn] = useState(false);
 
   useEffect(() => {
-    // 사용자 정보 로딩하여 travelId 가져오기
+    // 여행 정보 로드
     (async () => {
       try {
         const u = await api.auth.getUser();
@@ -104,29 +71,36 @@ export default function Camera() {
     })();
 
     startCamera();
-    return () => stopCamera();
+    
+    // 💡 [수정] 컴포넌트 언마운트 시 명확하게 카메라 종료
+    return () => {
+      stopCamera();
+    };
   }, []);
 
   const startCamera = async () => {
     try {
-      // 1. 권한 획득용 기본 후면 카메라 요청 (레이블은 권한 후에만 채워짐)
+      setCameraError(false);
+      
+      // 💡 [수정] 혹시 이미 열려있는 스트림이 있다면 먼저 종료 (Strict Mode 대응)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+
+      // 1. 기본 권한 획득
       let s = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
       });
 
-      // 2. 장치 목록에서 후면 카메라만 추림
+      // 2. 메인 카메라 찾기 루틴
       const devices = await navigator.mediaDevices.enumerateDevices();
       const backCams = devices.filter(
-        (d) =>
-          d.kind === "videoinput" &&
-          /back|rear|environment|후면/i.test(d.label)
+        (d) => d.kind === "videoinput" && /back|rear|environment|후면/i.test(d.label)
       );
 
-      // 3. 초광각/망원/심도 렌즈를 제외한 "메인 광각" 카메라 우선 선택
       const mainCam = backCams.find((d) => !isSpecialLens(d.label)) || backCams[0];
-
-      // 레이블로 메인 카메라를 특정했고 현재 스트림과 다르면 교체
       const currentId = s.getVideoTracks()[0]?.getSettings?.().deviceId;
+
       if (mainCam?.deviceId && mainCam.deviceId !== currentId) {
         s.getTracks().forEach((t) => t.stop());
         s = await navigator.mediaDevices.getUserMedia({
@@ -134,7 +108,7 @@ export default function Camera() {
         });
       }
 
-      // 4. 줌을 지원하면 1.0배(메인 화각)로 고정 — 초광각(0.5x) 방지
+      // 3. 줌 설정 (1.0배 고정)
       const track = s.getVideoTracks()[0];
       const caps = track.getCapabilities?.() || {};
       if (caps.zoom && caps.zoom.min <= 1 && caps.zoom.max >= 1) {
@@ -145,11 +119,23 @@ export default function Camera() {
         }
       }
 
-      setStream(s);
-      if (videoRef.current) videoRef.current.srcObject = s;
+      // 💡 [수정] ref와 state에 모두 저장
+      streamRef.current = s;
+      setStreamState(s);
 
-      // 5. 플래시(Torch) 지원 여부 확인
-      setHasTorch(!!caps.torch);
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
+      }
+
+      // 💡 [수정] 하드웨어가 로드될 시간을 주기 위해 300ms 후 플래시 지원 여부 체크
+      setTimeout(() => {
+        if (streamRef.current) {
+          const currentTrack = streamRef.current.getVideoTracks()[0];
+          const currentCaps = currentTrack?.getCapabilities?.() || {};
+          setHasTorch(!!currentCaps.torch);
+        }
+      }, 300);
+
     } catch (err) {
       console.error("Camera start error:", err);
       setCameraError(true);
@@ -157,19 +143,24 @@ export default function Camera() {
   };
 
   const stopCamera = () => {
-    stream?.getTracks().forEach((t) => t.stop());
+    // 💡 [수정] 항상 최신 스트림을 가리키는 ref를 사용해 종료
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setStreamState(null);
     setIsFlashOn(false);
   };
 
   const toggleFlash = async () => {
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
+    // 💡 [수정] ref 기반으로 최신 트랙을 가져옴
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
     if (!track) return;
 
-    // 일부 브라우저는 getCapabilities가 늦게 채워지므로 토글 시점에 다시 확인
     const caps = track.getCapabilities?.() || {};
     if (!caps.torch) {
-      console.warn("이 카메라/브라우저는 플래시(torch)를 지원하지 않습니다.");
+      alert("이 카메라/브라우저는 플래시를 지원하지 않습니다.");
       return;
     }
 
@@ -191,7 +182,7 @@ export default function Camera() {
     canvas.getContext("2d").drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
     setCapturedImage(dataUrl);
-    stopCamera();
+    stopCamera(); // 사진 찍으면 카메라 끄기 (플래시도 같이 꺼짐)
     setStep("confirm");
   };
 
@@ -229,7 +220,6 @@ export default function Camera() {
       }));
     } catch (err) {
       console.warn("AI analyze failed", err);
-      // 에러 시 기본값
       setForm(prev => ({ ...prev, title: "영수증 내역", total_amount: "1200", payment_method: "현금" }));
     } finally {
       setUploading(false);
@@ -270,7 +260,7 @@ export default function Camera() {
         <DoneContainer>
           <DoneIcon>✅</DoneIcon>
           <DoneTitle>지출이 기록됐어요!</DoneTitle>
-          <DoneSub>{form.title} · ¥{form.total_amount}</DoneSub>
+          <DoneSub>{form.title} · {form.total_amount}엔</DoneSub>
           <DoneBtn onClick={() => navigate("/count")}>가계부로 돌아가기</DoneBtn>
           <DoneBtnSecondary onClick={retake}>영수증 더 촬영하기</DoneBtnSecondary>
         </DoneContainer>
@@ -287,9 +277,7 @@ export default function Camera() {
           <SaveBtn onClick={handleSave}>저장</SaveBtn>
         </EditHeader>
 
-        {capturedImage && (
-          <ReceiptPreview src={capturedImage} alt="영수증" />
-        )}
+        {capturedImage && <ReceiptPreview src={capturedImage} alt="영수증" />}
 
         <EditForm>
           <FieldLabel>내용</FieldLabel>
@@ -357,7 +345,7 @@ export default function Camera() {
       <ViewfinderContainer>
         {cameraError ? (
           <CameraErrorBox>
-            <p>카메라를 사용할 수 없어요</p>
+            <p>카메라를 사용할 수 없어요 (HTTPS 연결을 확인하세요)</p>
             <GalleryFallbackBtn onClick={() => fileInputRef.current?.click()}>
               갤러리에서 선택
             </GalleryFallbackBtn>
@@ -385,11 +373,13 @@ export default function Camera() {
         <ShutterBtn onClick={takePhoto} disabled={cameraError}>
           <ShutterInner />
         </ShutterBtn>
+        
+        {/* 💡 [수정] 지원 여부에 따라 버튼 비활성화 해제 */}
         <FlashBtn onClick={toggleFlash} disabled={!hasTorch}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path
               d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"
-              fill={isFlashOn ? "#ff871e" : "white"}
+              fill={isFlashOn ? "#ff871e" : (hasTorch ? "white" : "#555")}
             />
           </svg>
         </FlashBtn>
