@@ -29,7 +29,7 @@ export default defineConfig({
         shortcuts: [
           {
             name: '여행 계획',
-            short_name: '계획',
+            short_name: '여행 계획',
             description: '여행 계획 페이지로 이동',
             url: '/plan',
             icons: [{ src: '/shortcut-plan.png', sizes: '192x192', type: 'image/png' }],
@@ -43,7 +43,7 @@ export default defineConfig({
           },
           {
             name: '영수증 인식',
-            short_name: '영수증',
+            short_name: '영수증 인식',
             description: '영수증 인식 페이지로 이동',
             url: '/camera',
             icons: [{ src: '/shortcut-receipt.png', sizes: '192x192', type: 'image/png' }],
