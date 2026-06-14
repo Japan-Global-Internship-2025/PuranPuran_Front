@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import styled from "styled-components";
 import {
   Screen,
   Header,
   Logo,
+  CalendarBtn,
   BudgetCard,
   BudgetLabel,
   BudgetInfo,
@@ -336,14 +336,3 @@ export default function Count() {
     </Screen>
   );
 }
-
-const CalendarBtn = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-left: auto;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;

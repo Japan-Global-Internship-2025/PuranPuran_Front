@@ -1,8 +1,47 @@
 import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import styled from "styled-components";
 import { api } from "../api";
 import LogoSvg from "../assets/logo1.svg";
+import {
+  Screen,
+  OrangeHeader,
+  LogoImg,
+  DarkNav,
+  BackBtn,
+  ViewfinderContainer,
+  Video,
+  Canvas,
+  ViewfinderOverlay,
+  ViewfinderFrame,
+  CameraControls,
+  GalleryIconBtn,
+  ShutterBtn,
+  ShutterInner,
+  FlashBtn,
+  CameraErrorBox,
+  GalleryFallbackBtn,
+  ConfirmImage,
+  ConfirmActions,
+  RetakeBtn,
+  AnalyzeBtn,
+  EditHeader,
+  EditHeaderTitle,
+  SaveBtn,
+  ReceiptPreview,
+  EditForm,
+  FieldLabel,
+  FieldInput,
+  ChipRow,
+  Chip,
+  KrwEstimate,
+  SubmitBtn,
+  DoneContainer,
+  DoneIcon,
+  DoneTitle,
+  DoneSub,
+  DoneBtn,
+  DoneBtnSecondary,
+} from "../styles/Camera";
 
 const CATEGORIES = ["식비", "쇼핑", "여가", "교통", "숙박", "기타"];
 
@@ -18,6 +57,13 @@ function normalizeDate(raw) {
   return null;
 }
 const PAYMENT_METHODS = ["현금", "카드"];
+
+// 초광각/망원/심도 등 보조 렌즈를 식별 (메인 광각 카메라 우선 선택용)
+function isSpecialLens(label = "") {
+  return /ultra|wide angle|超広角|초광각|telephoto|tele|망원|depth|심도|0\.5/i.test(
+    label
+  );
+}
 
 export default function Camera() {
   const navigate = useNavigate();
@@ -56,58 +102,54 @@ export default function Camera() {
         navigate("/login");
       }
     })();
-    
+
     startCamera();
     return () => stopCamera();
   }, []);
 
   const startCamera = async () => {
     try {
-      // 1. 우선 권한 획득을 위해 기본 환경 카메라 요청
+      // 1. 권한 획득용 기본 후면 카메라 요청 (레이블은 권한 후에만 채워짐)
       let s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode: { ideal: "environment" } },
       });
 
-      // 2. 권한 획득 후 장치 목록 열거 (레이블 확인 가능)
+      // 2. 장치 목록에서 후면 카메라만 추림
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((d) => d.kind === "videoinput");
-
-      // 'environment' (후면) 카메라 중 'ultra wide'가 포함되지 않은 장치 찾기
-      const backCameras = videoDevices.filter(
+      const backCams = devices.filter(
         (d) =>
-          d.label.toLowerCase().includes("back") ||
-          d.label.toLowerCase().includes("rear") ||
-          d.label.toLowerCase().includes("camera 0")
+          d.kind === "videoinput" &&
+          /back|rear|environment|후면/i.test(d.label)
       );
 
-      // 'wide'나 'main' 키워드가 있거나, 'ultra'가 없는 것을 우선 선택
-      const standardBackCamera =
-        backCameras.find(
-          (d) =>
-            (d.label.toLowerCase().includes("wide") ||
-              d.label.toLowerCase().includes("main")) &&
-            !d.label.toLowerCase().includes("ultra")
-        ) || backCameras[0];
+      // 3. 초광각/망원/심도 렌즈를 제외한 "메인 광각" 카메라 우선 선택
+      const mainCam = backCams.find((d) => !isSpecialLens(d.label)) || backCams[0];
 
-      // 만약 더 적합한 카메라를 찾았다면 해당 장치로 다시 스트림 시작
-      if (standardBackCamera && standardBackCamera.deviceId) {
-        s.getTracks().forEach((t) => t.stop()); // 이전 스트림 중지
+      // 레이블로 메인 카메라를 특정했고 현재 스트림과 다르면 교체
+      const currentId = s.getVideoTracks()[0]?.getSettings?.().deviceId;
+      if (mainCam?.deviceId && mainCam.deviceId !== currentId) {
+        s.getTracks().forEach((t) => t.stop());
         s = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId: { exact: standardBackCamera.deviceId },
-            // 지원되는 경우 줌 배율을 1.0으로 명시 (초광각 방지 힌트)
-            advanced: [{ zoom: 1.0 }],
-          },
+          video: { deviceId: { exact: mainCam.deviceId } },
         });
+      }
+
+      // 4. 줌을 지원하면 1.0배(메인 화각)로 고정 — 초광각(0.5x) 방지
+      const track = s.getVideoTracks()[0];
+      const caps = track.getCapabilities?.() || {};
+      if (caps.zoom && caps.zoom.min <= 1 && caps.zoom.max >= 1) {
+        try {
+          await track.applyConstraints({ advanced: [{ zoom: 1.0 }] });
+        } catch (e) {
+          console.warn("zoom 1.0 apply failed", e);
+        }
       }
 
       setStream(s);
       if (videoRef.current) videoRef.current.srcObject = s;
 
-      // 플래시(Torch) 지원 여부 확인
-      const track = s.getVideoTracks()[0];
-      const capabilities = track.getCapabilities?.() || {};
-      setHasTorch(!!capabilities.torch);
+      // 5. 플래시(Torch) 지원 여부 확인
+      setHasTorch(!!caps.torch);
     } catch (err) {
       console.error("Camera start error:", err);
       setCameraError(true);
@@ -122,13 +164,18 @@ export default function Camera() {
   const toggleFlash = async () => {
     if (!stream) return;
     const track = stream.getVideoTracks()[0];
-    if (!track || !hasTorch) return;
+    if (!track) return;
+
+    // 일부 브라우저는 getCapabilities가 늦게 채워지므로 토글 시점에 다시 확인
+    const caps = track.getCapabilities?.() || {};
+    if (!caps.torch) {
+      console.warn("이 카메라/브라우저는 플래시(torch)를 지원하지 않습니다.");
+      return;
+    }
 
     try {
       const nextMode = !isFlashOn;
-      await track.applyConstraints({
-        advanced: [{ torch: nextMode }],
-      });
+      await track.applyConstraints({ advanced: [{ torch: nextMode }] });
       setIsFlashOn(nextMode);
     } catch (err) {
       console.warn("Flash control error:", err);
@@ -169,7 +216,7 @@ export default function Camera() {
       formData.append("file", blob, "receipt.jpg");
       const result = await api.spending.uploadReceipt(formData);
       setParsed(result);
-      
+
       const paymentMethodHandled = result?.payment_method === "CARD" ? "카드" : "현금";
       setForm(prev => ({
         ...prev,
@@ -350,350 +397,3 @@ export default function Camera() {
     </Screen>
   );
 }
-
-/* ===== 스타일 ===== */
-const Screen = styled.div`
-  width: 100%;
-  max-width: 480px;
-  min-height: 100dvh;
-  background: #3a3a3a;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-`;
-
-const OrangeHeader = styled.header`
-  height: 60px;
-  background: #ff871e;
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  flex-shrink: 0;
-`;
-
-const LogoImg = styled.img`
-  height: 28px;
-  display: block;
-`;
-
-const DarkNav = styled.div`
-  padding: 10px 16px 4px;
-  background: #3a3a3a;
-`;
-
-const BackBtn = styled.button`
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 28px;
-  cursor: pointer;
-  padding: 4px 8px;
-  line-height: 1;
-`;
-
-const ViewfinderContainer = styled.div`
-  flex: 1;
-  position: relative;
-  background: #3a3a3a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 32px;
-`;
-
-const Video = styled.video`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const Canvas = styled.canvas``;
-
-const ViewfinderOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const ViewfinderFrame = styled.div`
-  width: 72%;
-  aspect-ratio: 0.63;
-  border: 2px solid rgba(255, 255, 255, 0.55);
-  border-radius: 20px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
-`;
-
-const CameraControls = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 28px 48px 44px;
-  background: #3a3a3a;
-  flex-shrink: 0;
-`;
-
-const GalleryIconBtn = styled.button`
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.28);
-  border: none;
-  cursor: pointer;
-`;
-
-const ShutterBtn = styled.button`
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: transparent;
-  border: 4px solid #ff871e;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: transform 0.15s;
-  &:active { transform: scale(0.93); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-`;
-
-const ShutterInner = styled.div`
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: #ff871e;
-`;
-
-const FlashBtn = styled.button`
-  width: 56px;
-  height: 56px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const CameraErrorBox = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: #fff;
-  font-size: 15px;
-  text-align: center;
-`;
-
-const GalleryFallbackBtn = styled.button`
-  padding: 12px 24px;
-  background: #ff871e;
-  border: none;
-  border-radius: 999px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-`;
-
-const ConfirmImage = styled.img`
-  width: 100%;
-  flex: 1;
-  object-fit: contain;
-  background: #000;
-`;
-
-const ConfirmActions = styled.div`
-  display: flex;
-  gap: 12px;
-  padding: 20px;
-  background: #111;
-`;
-
-const RetakeBtn = styled.button`
-  flex: 1;
-  height: 50px;
-  border-radius: 999px;
-  border: 2px solid rgba(255,255,255,0.3);
-  background: none;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-`;
-
-const AnalyzeBtn = styled.button`
-  flex: 2;
-  height: 50px;
-  border-radius: 999px;
-  border: none;
-  background: #ff871e;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  &:disabled { opacity: 0.6; cursor: not-allowed; }
-`;
-
-/* Edit step */
-const EditHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
-`;
-
-const EditHeaderTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-`;
-
-const SaveBtn = styled.button`
-  background: none;
-  border: none;
-  color: #ff871e;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-`;
-
-const ReceiptPreview = styled.img`
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-`;
-
-const EditForm = styled.div`
-  background: #fff;
-  padding: 20px;
-  flex: 1;
-  overflow-y: auto;
-`;
-
-const FieldLabel = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
-  margin-top: 16px;
-  &:first-child { margin-top: 0; }
-`;
-
-const FieldInput = styled.input`
-  width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border: 1.5px solid #e6e6e6;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #111;
-  outline: none;
-  box-sizing: border-box;
-  &:focus { border-color: #ff871e; }
-`;
-
-const ChipRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const Chip = styled.button`
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1.5px solid ${({ $active }) => ($active ? "#ff871e" : "#e6e6e6")};
-  background: ${({ $active }) => ($active ? "#fff5eb" : "#fff")};
-  color: ${({ $active }) => ($active ? "#ff871e" : "#555")};
-  font-size: 13px;
-  font-weight: ${({ $active }) => ($active ? "700" : "500")};
-  cursor: pointer;
-  transition: all 0.15s;
-`;
-
-const KrwEstimate = styled.div`
-  margin-top: 20px;
-  padding: 12px 16px;
-  background: #f9f9f9;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #555;
-  font-weight: 500;
-`;
-
-const SubmitBtn = styled.button`
-  width: calc(100% - 40px);
-  margin: 12px 20px 32px;
-  height: 52px;
-  background: #ff871e;
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  &:active { opacity: 0.9; }
-`;
-
-/* Done step */
-const DoneContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  padding: 40px 24px;
-  gap: 12px;
-`;
-
-const DoneIcon = styled.div`
-  font-size: 56px;
-  margin-bottom: 8px;
-`;
-
-const DoneTitle = styled.div`
-  font-size: 22px;
-  font-weight: 800;
-  color: #111;
-`;
-
-const DoneSub = styled.div`
-  font-size: 15px;
-  color: #888;
-  margin-bottom: 20px;
-`;
-
-const DoneBtn = styled.button`
-  width: 100%;
-  max-width: 300px;
-  height: 52px;
-  background: #ff871e;
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-`;
-
-const DoneBtnSecondary = styled.button`
-  width: 100%;
-  max-width: 300px;
-  height: 52px;
-  background: none;
-  border: 2px solid #e6e6e6;
-  border-radius: 14px;
-  color: #555;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-`;

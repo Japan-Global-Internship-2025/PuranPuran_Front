@@ -21,6 +21,17 @@ export const Logo = styled.img`
   display: block;
 `;
 
+export const CalendarBtn = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 //예산
 export const BudgetCard = styled.div`
   background: #ff871e;
