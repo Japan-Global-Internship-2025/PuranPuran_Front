@@ -36,6 +36,8 @@ export default function Camera() {
     currency: "JPY", payment_method: "현금", category: "식비",
   });
   const [cameraError, setCameraError] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [isFlashOn, setIsFlashOn] = useState(false);
 
   useEffect(() => {
     // 사용자 정보 로딩하여 travelId 가져오기
@@ -61,18 +63,76 @@ export default function Camera() {
 
   const startCamera = async () => {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
+      // 1. 우선 권한 획득을 위해 기본 환경 카메라 요청
+      let s = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
+
+      // 2. 권한 획득 후 장치 목록 열거 (레이블 확인 가능)
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+      // 'environment' (후면) 카메라 중 'ultra wide'가 포함되지 않은 장치 찾기
+      const backCameras = videoDevices.filter(
+        (d) =>
+          d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear") ||
+          d.label.toLowerCase().includes("camera 0")
+      );
+
+      // 'wide'나 'main' 키워드가 있거나, 'ultra'가 없는 것을 우선 선택
+      const standardBackCamera =
+        backCameras.find(
+          (d) =>
+            (d.label.toLowerCase().includes("wide") ||
+              d.label.toLowerCase().includes("main")) &&
+            !d.label.toLowerCase().includes("ultra")
+        ) || backCameras[0];
+
+      // 만약 더 적합한 카메라를 찾았다면 해당 장치로 다시 스트림 시작
+      if (standardBackCamera && standardBackCamera.deviceId) {
+        s.getTracks().forEach((t) => t.stop()); // 이전 스트림 중지
+        s = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: standardBackCamera.deviceId },
+            // 지원되는 경우 줌 배율을 1.0으로 명시 (초광각 방지 힌트)
+            advanced: [{ zoom: 1.0 }],
+          },
+        });
+      }
+
       setStream(s);
       if (videoRef.current) videoRef.current.srcObject = s;
-    } catch {
+
+      // 플래시(Torch) 지원 여부 확인
+      const track = s.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.() || {};
+      setHasTorch(!!capabilities.torch);
+    } catch (err) {
+      console.error("Camera start error:", err);
       setCameraError(true);
     }
   };
 
   const stopCamera = () => {
-    stream?.getTracks().forEach(t => t.stop());
+    stream?.getTracks().forEach((t) => t.stop());
+    setIsFlashOn(false);
+  };
+
+  const toggleFlash = async () => {
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track || !hasTorch) return;
+
+    try {
+      const nextMode = !isFlashOn;
+      await track.applyConstraints({
+        advanced: [{ torch: nextMode }],
+      });
+      setIsFlashOn(nextMode);
+    } catch (err) {
+      console.warn("Flash control error:", err);
+    }
   };
 
   const takePhoto = () => {
@@ -278,9 +338,12 @@ export default function Camera() {
         <ShutterBtn onClick={takePhoto} disabled={cameraError}>
           <ShutterInner />
         </ShutterBtn>
-        <FlashBtn>
+        <FlashBtn onClick={toggleFlash} disabled={!hasTorch}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="white" />
+            <path
+              d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"
+              fill={isFlashOn ? "#ff871e" : "white"}
+            />
           </svg>
         </FlashBtn>
       </CameraControls>
