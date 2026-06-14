@@ -730,7 +730,7 @@ export default function Plan() {
 
       {isLoading && (
         <LoadingOverlay 
-          message={isCurrentTabGenerated ? "AI가 최적의 일정을 짜고 있어요..." : "일정을 저장하고 있어요..."} 
+          message={!isCurrentTabGenerated ? "AI가 최적의 일정을 짜고 있어요..." : "일정을 저장하고 있어요..."} 
         />
       )}
     </Screen>
