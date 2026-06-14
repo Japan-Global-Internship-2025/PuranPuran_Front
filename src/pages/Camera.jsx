@@ -94,9 +94,11 @@ export default function Camera() {
 
       // 2. 메인 카메라 찾기 루틴
       const devices = await navigator.mediaDevices.enumerateDevices();
+      console.log("Available video devices:", devices);
       const backCams = devices.filter(
-        (d) => d.kind === "videoinput" && /back|rear|environment|후면/i.test(d.label)
+        (d) => d.kind === "videoinput" && /back|rear|environment|main|후면/i.test(d.label)
       );
+      console.log("Back cameras found:", backCams);
 
       const mainCam = backCams.find((d) => !isSpecialLens(d.label)) || backCams[0];
       const currentId = s.getVideoTracks()[0]?.getSettings?.().deviceId;
