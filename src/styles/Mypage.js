@@ -180,3 +180,122 @@ export const NavIcon = styled.div`
     transition: all 0.2s ease;
   }
 `;
+
+/* ===== 추가 스타일 ===== */
+
+export const UserNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+`;
+
+export const NicknameInput = styled.input`
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+  outline: none;
+  width: 160px;
+  padding: 0 0 2px;
+  &::placeholder { color: rgba(255,255,255,0.5); }
+`;
+
+export const AvatarWrapper = styled.div`
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+`;
+
+export const AvatarAddBtn = styled.button`
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ff871e;
+  border: 2px solid #ff871e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+`;
+
+export const DefaultAvatar = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+export const TravelImageList = styled.div`
+  margin: -4px 0 0;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+`;
+
+export const TravelImageCard = styled.div`
+  position: relative;
+  height: 130px;
+  background-image: url(${(props) => props.$image});
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+export const TravelImageOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.1) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px 16px;
+`;
+
+export const TravelImageDate = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 4px;
+`;
+
+export const TravelImageName = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+`;
+
+export const TravelDeleteBtn = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s;
+  &:hover {
+    background: rgba(255, 59, 48, 0.8);
+    transform: scale(1.1);
+  }
+`;
