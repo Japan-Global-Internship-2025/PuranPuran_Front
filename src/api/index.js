@@ -11,13 +11,30 @@ async function request(method, path, body) {
     credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) {
-    throw new Error(`${method} ${path} → ${res.status}`);
-  }
   console.log(`${method} ${path} → ${res.status}`);
-  const result = await res.json();
-  console.log("response data:", result);
-  return result && result.success ? result.data : result;
+  if (!res.ok) {
+    const err = await res.json();
+    console.error(`Error response from ${method} ${path}:`, err);
+    throw new HttpError(err.status, err);
+  }
+  else {
+    console.log(`Successful response from ${method} ${path}`);
+    const result = await res.json();
+    console.log("response data:", result);
+    return result && result.success ? result.data : result;
+  }
+}
+
+class HttpError extends Error {
+  constructor(status, obj) {
+    super(`HTTP Error: ${status}`);
+    this.status = status;
+    this.data = obj;
+  }
+
+  toString() {
+    return this.data;
+  }
 }
 
 // ── Auth ──────────────────────────────────────────────

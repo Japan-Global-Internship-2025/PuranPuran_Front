@@ -84,8 +84,9 @@ export default function Preference() {
   };
 
   const handleComplete = async () => {
+    // console.log("Selected categories:", selected);
     try {
-      await api.auth.updateUser({ taste: JSON.stringify(selected) });
+      await api.auth.updateUser({ taste: selected.join(",") });
       if (from === "mypage") {
         navigate("/mypage");
       } else {

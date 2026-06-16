@@ -19,12 +19,27 @@ export default function Signup() {
       alert("비밀번호가 일치하지 않습니다.");
       return;
     }
+
+    if (!userId || !password || !email) {
+      alert("모든 정보를 입력하세요.");
+      return;
+    }
+
     try {
       await api.auth.signup({ user_id: userId, user_pw: password, user_email: email, taste: '[]' });
       alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
       navigate('/login');
     } catch (err) {
       console.error(err);
+      if (err && err.status === 409) {
+        alert(err.data.error.message || "이미 존재하는 아이디입니다. 다른 아이디를 사용하세요.");
+        return;
+      }
+      else if (err && err.status === 400) {
+        alert(err.data.error.message || "입력 정보가 올바르지 않습니다. 다시 확인하세요.");
+        return;
+      }
+      // console.error(err);
       alert('회원가입에 실패했습니다. 입력 정보를 확인하세요.');
     }
   };

@@ -11,15 +11,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const onLogin = async (e) => {
+    e.preventDefault();
     if (!userId || !password) {
       alert("아이디와 비밀번호를 모두 입력하세요.");
       return;
     }
-    e.preventDefault();
     try {
       await api.auth.login({ user_id: userId, user_pw: password });
       navigate("/home");
     } catch (err) {
+      if (err && err.status === 401) {
+        alert("아이디 또는 비밀번호가 올바르지 않습니다. 다시 시도하세요.");
+        return;
+      }
       console.error(err);
       alert("로그인에 실패했습니다. 입력 정보를 확인하세요.");
     }
