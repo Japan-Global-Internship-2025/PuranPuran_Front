@@ -84,7 +84,8 @@ export default function TravelStart() {
   const [walkDistances, setWalkDistances] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [budget, setBudget] = useState("");
+  const [budget, setBudget] = useState(0);
+  const [formatBudget, setFormatBudget] = useState("");
   const [lodging, setLodging] = useState("");
   const [travelName, setTravelName] = useState("");
   const [budgetFocused, setBudgetFocused] = useState(false);
@@ -116,6 +117,22 @@ export default function TravelStart() {
     }
   };
 
+  const handleBudgetChange = (e) => {
+    const value = e.target.value;
+    const rawValue = e.target.value.replace(/[^0-9]/g, "");
+    if (Number(rawValue) > 2000000000) {
+      alert("예산은 최대 2,000,000,000원까지 입력 가능합니다.");
+      setBudget(2000000000);
+      setFormatBudget("2,000,000,000");
+      return;
+    }
+    
+    const formattedValue = rawValue ? Number(rawValue).toLocaleString() : "";
+    setBudget(Number(rawValue));
+    setFormatBudget(formattedValue);
+    // console.log("Budget changed:", { budget: bu  dget });
+  }
+
   /* 달력 */
   const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=일
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -133,6 +150,23 @@ export default function TravelStart() {
   const canStart = region && startDate && endDate && transports.length > 0 && walkDistances.length > 0 && budget && lodging;
 
   const handleStart = async () => {
+    if (travelName.length > 30) {
+      alert("여행 이름은 최대 30자까지 입력 가능합니다.");
+      return;
+    }
+    else if (travelName.trim().length < 2) {
+      alert("여행 이름은 최소 2자 이상 입력해야 합니다.");
+      return;
+    }
+    
+    if (budget < 10000) {
+      alert("예산은 최소 10,000원 이상이어야 합니다.");
+      return;
+    }
+    else if (budget > 2000000000) {
+      alert("예산은 최대 2,000,000,000원까지 입력 가능합니다.");
+      return;
+    }
 
     try {
       const body = {
@@ -339,10 +373,10 @@ export default function TravelStart() {
           <BudgetInputWrapper $focused={budgetFocused}>
             <BudgetCurrency>₩</BudgetCurrency>
             <BudgetInput
-              type="number"
+              type="text"
               placeholder="0"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
+              value={formatBudget}
+              onChange={(e) => handleBudgetChange(e)}
               onFocus={() => setBudgetFocused(true)}
               onBlur={() => setBudgetFocused(false)}
             />

@@ -138,7 +138,7 @@ export const CardImage = styled.div`
 export const CardDim = styled.div`
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, ${({ $selected }) => ($selected ? 0.5 : 0.25)});
+  background: rgba(0, 0, 0, ${({ $selected }) => ($selected ? 0.5 : 0)});
   transition: background 0.2s ease;
   pointer-events: none;
 `;
